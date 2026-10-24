@@ -35,7 +35,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvEnbid: TextView
     private lateinit var tvTrafficSession: TextView
     private lateinit var tvTrafficTotal: TextView
-    private lateinit var tvSpeedLive: TextView
+    private lateinit var tvSpeedDlBadge: TextView
+    private lateinit var tvSpeedDlBytes: TextView
+    private lateinit var tvSpeedUlBadge: TextView
+    private lateinit var tvSpeedUlBytes: TextView
 
     private lateinit var tvRssiVal: TextView
     private lateinit var tvRssiEval: TextView
@@ -67,10 +70,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var cbTdd38: CheckBox
     private lateinit var cbTdd42: CheckBox
 
-    private lateinit var rbAuto: RadioButton
-    private lateinit var rb4G: RadioButton
-    private lateinit var rb3G: RadioButton
-    private lateinit var rb2G: RadioButton
+    private lateinit var optAuto: TextView
+    private lateinit var opt4G: TextView
+    private lateinit var opt3G: TextView
+    private lateinit var opt2G: TextView
+    private var selectedMode = "03"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -110,7 +114,10 @@ class MainActivity : AppCompatActivity() {
 
         tvTrafficSession = findViewById(R.id.tvTrafficSession)
         tvTrafficTotal = findViewById(R.id.tvTrafficTotal)
-        tvSpeedLive = findViewById(R.id.tvSpeedLive)
+        tvSpeedDlBadge = findViewById(R.id.tvSpeedDlBadge)
+        tvSpeedDlBytes = findViewById(R.id.tvSpeedDlBytes)
+        tvSpeedUlBadge = findViewById(R.id.tvSpeedUlBadge)
+        tvSpeedUlBytes = findViewById(R.id.tvSpeedUlBytes)
 
         tvRssiVal = findViewById(R.id.tvRssiVal)
         tvRssiEval = findViewById(R.id.tvRssiEval)
@@ -146,10 +153,10 @@ class MainActivity : AppCompatActivity() {
         cbTdd38 = findViewById(R.id.cbTdd38)
         cbTdd42 = findViewById(R.id.cbTdd42)
 
-        rbAuto = findViewById(R.id.rbAuto)
-        rb4G = findViewById(R.id.rb4G)
-        rb3G = findViewById(R.id.rb3G)
-        rb2G = findViewById(R.id.rb2G)
+        optAuto = findViewById(R.id.optAuto)
+        opt4G = findViewById(R.id.opt4G)
+        opt3G = findViewById(R.id.opt3G)
+        opt2G = findViewById(R.id.opt2G)
 
         tvHeaderIp.text = hilink.gatewayIp
     }
@@ -160,15 +167,24 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnRouterOptions).setOnClickListener { showRouterOptionsDialog() }
         findViewById<TextView>(R.id.btnSettingsGear).setOnClickListener { showRouterIpDialog() }
 
-        findViewById<Button>(R.id.btnApplyMode).setOnClickListener {
-            val modeCode = when {
-                rb4G.isChecked -> "03"
-                rb3G.isChecked -> "02"
-                rb2G.isChecked -> "01"
-                else -> "00"
+        fun setModePills(sel: TextView, code: String) {
+            listOf(optAuto, opt4G, opt3G, opt2G).forEach {
+                it.setBackgroundResource(R.drawable.pill_dark)
+                it.setTextColor(android.graphics.Color.parseColor("#AAAAAA"))
             }
+            sel.setBackgroundResource(R.drawable.pill_green)
+            sel.setTextColor(android.graphics.Color.WHITE)
+            selectedMode = code
+        }
+
+        optAuto.setOnClickListener { setModePills(optAuto, "00") }
+        opt4G.setOnClickListener { setModePills(opt4G, "03") }
+        opt3G.setOnClickListener { setModePills(opt3G, "02") }
+        opt2G.setOnClickListener { setModePills(opt2G, "01") }
+
+        findViewById<Button>(R.id.btnApplyMode).setOnClickListener {
             lifecycleScope.launch {
-                val ok = hilink.setNetworkMode(modeCode)
+                val ok = hilink.setNetworkMode(selectedMode)
                 Toast.makeText(this@MainActivity, if (ok) "Mode Applied!" else "Mode Switch Failed", Toast.LENGTH_SHORT).show()
             }
         }
@@ -287,12 +303,16 @@ class MainActivity : AppCompatActivity() {
         tvCountryFlag.text = if (t.plmn.startsWith("604")) "🇲🇦" else "🌐"
 
         tvDiagnostic1.text = "BandLTEWork : ${t.bandWork}  Mode : ${t.mode}"
-        tvDiagnostic2.text = "SetBand : ${t.bandWork}\nSetName : 2600"
+        tvDiagnostic2.text = "SetBand : ${t.bandWork}\nSetName : ${t.bandFreq}"
         tvDiagnostic3.text = "NetMode : ${t.netMode}  NetBand : 3FFFFFFF  LTEBand : ${t.lteBandHex}"
 
         tvTrafficSession.text = t.sessionTrafficText
         tvTrafficTotal.text = t.totalTrafficText
-        tvSpeedLive.text = t.speedLiveText
+
+        tvSpeedDlBadge.text = t.speedDlBadge
+        tvSpeedDlBytes.text = t.speedDlBytes
+        tvSpeedUlBadge.text = t.speedUlBadge
+        tvSpeedUlBytes.text = t.speedUlBytes
 
         tvRssiVal.text = t.rssi
         tvRssiEval.text = t.rssiRating

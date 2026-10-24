@@ -138,7 +138,7 @@
                 android:textStyle="bold" />
         </LinearLayout>
 
-        <!-- Dynamic Diagnostics Text -->
+        <!-- Diagnostic Text -->
         <TextView
             android:id="@+id/tvDiagOperator"
             android:layout_width="match_parent"
@@ -153,7 +153,7 @@
             android:id="@+id/tvDiagnostic1"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="BandLTEWork : B7  Mode : 7"
+            android:text="BandLTEWork : B3  Mode : 7"
             android:textAlignment="center"
             android:textColor="@color/text_red"
             android:textSize="11sp"
@@ -163,7 +163,7 @@
             android:id="@+id/tvDiagnostic2"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="SetBand : B7\nSetName : 2600"
+            android:text="SetBand : B3\nSetName : 1800"
             android:textAlignment="center"
             android:textColor="@color/text_green"
             android:textSize="10sp" />
@@ -173,7 +173,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="6dp"
-            android:text="NetMode : 03  NetBand : 3FFFFFFF  LTEBand : 40"
+            android:text="NetMode : 03  NetBand : 3FFFFFFF  LTEBand : 4"
             android:textAlignment="center"
             android:textColor="@color/text_red"
             android:textSize="10sp" />
@@ -244,19 +244,19 @@
             android:orientation="vertical"
             android:padding="2dp">
 
-            <!-- Device Summary Table -->
+            <!-- Device Summary Table (Row 1 spans 4 columns perfectly) -->
             <TableLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:stretchColumns="*">
+                android:stretchColumns="0,1,2,3">
                 <TableRow android:background="@color/table_header_blue">
                     <TextView android:padding="4dp" android:text="Status" android:textAlignment="center" android:textColor="#FFF" android:textSize="11sp" />
-                    <TextView android:padding="4dp" android:text="Device Model" android:textAlignment="center" android:textColor="#FFF" android:textSize="11sp" />
+                    <TextView android:layout_span="2" android:padding="4dp" android:text="Device Model" android:textAlignment="center" android:textColor="#FFF" android:textSize="11sp" />
                     <TextView android:padding="4dp" android:text="Service" android:textAlignment="center" android:textColor="#FFF" android:textSize="11sp" />
                 </TableRow>
                 <TableRow android:background="#131B28">
                     <TextView android:id="@+id/tvStatus" android:background="#27AE60" android:padding="4dp" android:text="Connected" android:textAlignment="center" android:textColor="#FFF" android:textSize="11sp" android:textStyle="bold" />
-                    <TextView android:id="@+id/tvModel" android:padding="4dp" android:text="B612s-25d" android:textAlignment="center" android:textColor="#FFF" android:textSize="11sp" android:textStyle="bold" />
+                    <TextView android:id="@+id/tvModel" android:layout_span="2" android:padding="4dp" android:text="B612s-25d" android:textAlignment="center" android:textColor="#FFF" android:textSize="11sp" android:textStyle="bold" />
                     <TextView android:id="@+id/tvService" android:background="#27AE60" android:padding="4dp" android:text="Orange" android:textAlignment="center" android:textColor="#FFF" android:textSize="11sp" android:textStyle="bold" />
                 </TableRow>
                 <TableRow android:background="@color/table_header_blue">
@@ -267,9 +267,9 @@
                 </TableRow>
                 <TableRow android:background="#131B28">
                     <TextView android:id="@+id/tvPci" android:padding="4dp" android:text="66" android:textAlignment="center" android:textColor="#FFF" android:textSize="11sp" />
-                    <TextView android:id="@+id/tvCellId" android:padding="4dp" android:text="4" android:textAlignment="center" android:textColor="#FFF" android:textSize="11sp" />
+                    <TextView android:id="@+id/tvCellId" android:padding="4dp" android:text="1" android:textAlignment="center" android:textColor="#FFF" android:textSize="11sp" />
                     <TextView android:id="@+id/tvTac" android:padding="4dp" android:text="50300" android:textAlignment="center" android:textColor="#FFF" android:textSize="11sp" />
-                    <TextView android:id="@+id/tvEnbid" android:padding="4dp" android:text="NaN/4" android:textAlignment="center" android:textColor="#FFF" android:textSize="11sp" />
+                    <TextView android:id="@+id/tvEnbid" android:padding="4dp" android:text="NaN/1" android:textAlignment="center" android:textColor="#FFF" android:textSize="11sp" />
                 </TableRow>
             </TableLayout>
 
@@ -299,20 +299,65 @@
                 android:textSize="11sp"
                 android:textStyle="bold" />
 
-            <!-- Row 3: Live Speed (Dark Red with highlighted rate) -->
-            <TextView
-                android:id="@+id/tvSpeedLive"
+            <!-- Row 3: Live Speed with Highlight Badges -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:background="@color/speed_red"
-                android:padding="3dp"
-                android:text="D : 0.00Mbps (0B/s)    U : 0.00Kbps (0B/s)"
-                android:textAlignment="center"
-                android:textColor="@color/text_yellow"
-                android:textSize="11sp"
-                android:textStyle="bold" />
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:padding="3dp">
 
-            <!-- Detailed Telemetry Table -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="D : "
+                    android:textColor="@color/text_yellow"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvSpeedDlBadge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/pill_yellow"
+                    android:paddingHorizontal="4dp"
+                    android:text="0.00Mbps"
+                    android:textColor="#F4D03F"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvSpeedDlBytes"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text=" (0B/s)    U : "
+                    android:textColor="@color/text_yellow"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvSpeedUlBadge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/pill_yellow"
+                    android:paddingHorizontal="4dp"
+                    android:text="0.00Kbps"
+                    android:textColor="#F4D03F"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvSpeedUlBytes"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text=" (0B/s)"
+                    android:textColor="@color/text_yellow"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- Detailed Telemetry Table with Centered Text over Bar -->
             <TableLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -328,9 +373,9 @@
                     <TextView android:padding="4dp" android:text="RSSI" android:textColor="#FFF" android:textSize="11sp" />
                     <FrameLayout android:layout_width="match_parent" android:layout_height="22dp" android:background="#1B2230">
                         <View android:id="@+id/barRssi" android:layout_width="0dp" android:layout_height="match_parent" android:background="#2ECC71" />
-                        <TextView android:id="@+id/tvRssiVal" android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:text="-67 dBm" android:textColor="#FFF" android:textSize="11sp" android:textStyle="bold" />
+                        <TextView android:id="@+id/tvRssiVal" android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:text="-71 dBm" android:textColor="#FFF" android:textSize="11sp" android:textStyle="bold" />
                     </FrameLayout>
-                    <TextView android:id="@+id/tvRssiEval" android:layout_marginStart="4dp" android:background="@drawable/pill_green" android:paddingHorizontal="4dp" android:paddingVertical="2dp" android:text="79% V.Good" android:textAlignment="center" android:textColor="#FFF" android:textSize="10sp" android:textStyle="bold" />
+                    <TextView android:id="@+id/tvRssiEval" android:layout_marginStart="4dp" android:background="@drawable/pill_green" android:paddingHorizontal="4dp" android:paddingVertical="2dp" android:text="65% V.Good" android:textAlignment="center" android:textColor="#FFF" android:textSize="10sp" android:textStyle="bold" />
                 </TableRow>
 
                 <!-- 4G-RSRP -->
@@ -338,9 +383,9 @@
                     <TextView android:padding="4dp" android:text="4G-RSRP" android:textColor="#FFF" android:textSize="11sp" />
                     <FrameLayout android:layout_width="match_parent" android:layout_height="22dp" android:background="#1B2230">
                         <View android:id="@+id/barRsrp" android:layout_width="0dp" android:layout_height="match_parent" android:background="#E67E22" />
-                        <TextView android:id="@+id/tvRsrpVal" android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:text="-96 dBm" android:textColor="#FFF" android:textSize="11sp" android:textStyle="bold" />
+                        <TextView android:id="@+id/tvRsrpVal" android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:text="-99 dBm" android:textColor="#FFF" android:textSize="11sp" android:textStyle="bold" />
                     </FrameLayout>
-                    <TextView android:id="@+id/tvRsrpEval" android:layout_marginStart="4dp" android:background="@drawable/pill_red" android:paddingHorizontal="4dp" android:paddingVertical="2dp" android:text="39% Weak" android:textAlignment="center" android:textColor="#FFF" android:textSize="10sp" android:textStyle="bold" />
+                    <TextView android:id="@+id/tvRsrpEval" android:layout_marginStart="4dp" android:background="@drawable/pill_red" android:paddingHorizontal="4dp" android:paddingVertical="2dp" android:text="42% Weak" android:textAlignment="center" android:textColor="#FFF" android:textSize="10sp" android:textStyle="bold" />
                 </TableRow>
 
                 <!-- 4G-RSRQ -->
@@ -348,9 +393,9 @@
                     <TextView android:padding="4dp" android:text="4G-RSRQ" android:textColor="#FFF" android:textSize="11sp" />
                     <FrameLayout android:layout_width="match_parent" android:layout_height="22dp" android:background="#1B2230">
                         <View android:id="@+id/barRsrq" android:layout_width="0dp" android:layout_height="match_parent" android:background="#F39C12" />
-                        <TextView android:id="@+id/tvRsrqVal" android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:text="-9 dB" android:textColor="#FFF" android:textSize="11sp" android:textStyle="bold" />
+                        <TextView android:id="@+id/tvRsrqVal" android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:text="-6 dB" android:textColor="#FFF" android:textSize="11sp" android:textStyle="bold" />
                     </FrameLayout>
-                    <TextView android:id="@+id/tvRsrqEval" android:layout_marginStart="4dp" android:background="@drawable/pill_yellow" android:paddingHorizontal="4dp" android:paddingVertical="2dp" android:text="71% Good" android:textAlignment="center" android:textColor="#F4D03F" android:textSize="10sp" android:textStyle="bold" />
+                    <TextView android:id="@+id/tvRsrqEval" android:layout_marginStart="4dp" android:background="@drawable/pill_green" android:paddingHorizontal="4dp" android:paddingVertical="2dp" android:text="82% Good" android:textAlignment="center" android:textColor="#FFF" android:textSize="10sp" android:textStyle="bold" />
                 </TableRow>
 
                 <!-- 4G-SINR -->
@@ -358,25 +403,25 @@
                     <TextView android:padding="4dp" android:text="4G-SINR" android:textColor="#FFF" android:textSize="11sp" />
                     <FrameLayout android:layout_width="match_parent" android:layout_height="22dp" android:background="#1B2230">
                         <View android:id="@+id/barSinr" android:layout_width="0dp" android:layout_height="match_parent" android:background="#E67E22" />
-                        <TextView android:id="@+id/tvSinrVal" android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:text="4 dB" android:textColor="#FFF" android:textSize="11sp" android:textStyle="bold" />
+                        <TextView android:id="@+id/tvSinrVal" android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:text="6 dB" android:textColor="#FFF" android:textSize="11sp" android:textStyle="bold" />
                     </FrameLayout>
-                    <TextView android:id="@+id/tvSinrEval" android:layout_marginStart="4dp" android:background="@drawable/pill_red" android:paddingHorizontal="4dp" android:paddingVertical="2dp" android:text="43% Weak" android:textAlignment="center" android:textColor="#FFF" android:textSize="10sp" android:textStyle="bold" />
+                    <TextView android:id="@+id/tvSinrEval" android:layout_marginStart="4dp" android:background="@drawable/pill_red" android:paddingHorizontal="4dp" android:paddingVertical="2dp" android:text="40% Weak" android:textAlignment="center" android:textColor="#FFF" android:textSize="10sp" android:textStyle="bold" />
                 </TableRow>
             </TableLayout>
 
-            <!-- Advanced RF Metrics Rows -->
-            <TextView android:id="@+id/tvTxPower" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:background="@color/speed_green" android:padding="3dp" android:text="4G-TxPower: PPusch: 7, PPucch: 3, PSrs: 0, PPrach: 12" android:textAlignment="center" android:textColor="#FFF" android:textSize="10sp" />
-            <TextView android:id="@+id/tvEarfcn" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="1dp" android:background="@color/speed_green" android:padding="3dp" android:text="4G-Earfcn: DL: 3250 UL: 21250" android:textAlignment="center" android:textColor="#FFF" android:textSize="10sp" />
+            <!-- Advanced RF Parameters (Parsed cleanly) -->
+            <TextView android:id="@+id/tvTxPower" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:background="@color/speed_green" android:padding="3dp" android:text="4G-TxPower: PPusch:13dBm PPucch:11dBm PSrs:20dBm PPrach:14dBm" android:textAlignment="center" android:textColor="#FFF" android:textSize="10sp" />
+            <TextView android:id="@+id/tvEarfcn" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="1dp" android:background="@color/speed_green" android:padding="3dp" android:text="4G-Earfcn: DL: 1850 UL: 19850" android:textAlignment="center" android:textColor="#FFF" android:textSize="10sp" />
 
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="1dp" android:orientation="horizontal">
-                <TextView android:id="@+id/tvMcs" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:background="@drawable/pill_yellow" android:padding="3dp" android:text="4G-MCS: DL0:13  UL:16" android:textAlignment="center" android:textColor="@color/text_yellow" android:textSize="10sp" />
-                <TextView android:id="@+id/tvTbs" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="2dp" android:layout_weight="1" android:background="@drawable/pill_yellow" android:padding="3dp" android:text="4G-TBS: DL0:18  UL:15" android:textAlignment="center" android:textColor="@color/text_green" android:textSize="10sp" />
+                <TextView android:id="@+id/tvMcs" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:background="@drawable/pill_yellow" android:padding="3dp" android:text="4G-MCS: DL0:4  DL1:7  UL:22" android:textAlignment="center" android:textColor="@color/text_yellow" android:textSize="10sp" />
+                <TextView android:id="@+id/tvTbs" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="2dp" android:layout_weight="1" android:background="@drawable/pill_yellow" android:padding="3dp" android:text="4G-TBS: DL0:0  UL:0" android:textAlignment="center" android:textColor="@color/text_green" android:textSize="10sp" />
             </LinearLayout>
 
             <TextView android:id="@+id/tvFreqBandwidth" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="1dp" android:background="@color/speed_green" android:padding="3dp" android:text="4G-Bandwidth: DL: 20MHz UL: 20MHz (100%)" android:textAlignment="center" android:textColor="#FFF" android:textSize="10sp" />
         </LinearLayout>
 
-        <!-- SECTION: Connection Settings -->
+        <!-- SECTION: Connection Settings (Pill button selectors, fits 1 row) -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -401,24 +446,26 @@
                 android:layout_width="wrap_content"
                 android:layout_height="32dp"
                 android:background="@drawable/pill_green"
-                android:paddingHorizontal="10dp"
+                android:paddingHorizontal="8dp"
                 android:text="Speed Test"
                 android:textAllCaps="false"
                 android:textColor="#FFFFFF"
                 android:textSize="10sp" />
 
-            <RadioGroup
-                android:id="@+id/rgNetMode"
+            <!-- Compact Pill Buttons for Modes -->
+            <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_marginHorizontal="4dp"
                 android:layout_weight="1"
                 android:gravity="center"
                 android:orientation="horizontal">
-                <RadioButton android:id="@+id/rbAuto" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Auto" android:textColor="#FFF" android:textSize="10sp" android:checked="true" />
-                <RadioButton android:id="@+id/rb4G" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="4G" android:textColor="#FFF" android:textSize="10sp" />
-                <RadioButton android:id="@+id/rb3G" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="3G" android:textColor="#FFF" android:textSize="10sp" />
-                <RadioButton android:id="@+id/rb2G" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="2G" android:textColor="#FFF" android:textSize="10sp" />
-            </RadioGroup>
+
+                <TextView android:id="@+id/optAuto" android:layout_width="wrap_content" android:layout_height="28dp" android:background="@drawable/pill_green" android:gravity="center" android:paddingHorizontal="6dp" android:text="Auto" android:textColor="#FFF" android:textSize="10sp" android:textStyle="bold" />
+                <TextView android:id="@+id/opt4G" android:layout_width="wrap_content" android:layout_height="28dp" android:layout_marginStart="4dp" android:background="@drawable/pill_dark" android:gravity="center" android:paddingHorizontal="6dp" android:text="4G" android:textColor="#AAA" android:textSize="10sp" android:textStyle="bold" />
+                <TextView android:id="@+id/opt3G" android:layout_width="wrap_content" android:layout_height="28dp" android:layout_marginStart="4dp" android:background="@drawable/pill_dark" android:gravity="center" android:paddingHorizontal="6dp" android:text="3G" android:textColor="#AAA" android:textSize="10sp" android:textStyle="bold" />
+                <TextView android:id="@+id/opt2G" android:layout_width="wrap_content" android:layout_height="28dp" android:layout_marginStart="4dp" android:background="@drawable/pill_dark" android:gravity="center" android:paddingHorizontal="6dp" android:text="2G" android:textColor="#AAA" android:textSize="10sp" android:textStyle="bold" />
+            </LinearLayout>
 
             <androidx.appcompat.widget.AppCompatButton
                 android:id="@+id/btnApplyMode"
@@ -426,7 +473,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="32dp"
                 android:background="@drawable/pill_green"
-                android:paddingHorizontal="12dp"
+                android:paddingHorizontal="10dp"
                 android:text="Done"
                 android:textAllCaps="false"
                 android:textColor="#FFFFFF"
@@ -437,7 +484,7 @@
                 android:id="@+id/btnSettingsGear"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
+                android:layout_marginStart="6dp"
                 android:text="⚙"
                 android:textColor="@color/text_red"
                 android:textSize="22sp" />
@@ -478,14 +525,12 @@
                 <CheckBox android:id="@+id/cb3G_B1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="20dp" android:text="2100 - B1" android:textColor="@color/text_yellow" android:textSize="11sp" />
             </LinearLayout>
 
-            <!-- 4G FDD & TDD Columns -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
                 android:orientation="horizontal">
 
-                <!-- FDD Column -->
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
@@ -499,7 +544,6 @@
                     <CheckBox android:id="@+id/cbFdd7" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="2600 - B7" android:textColor="@color/text_green" android:textSize="11sp" />
                 </LinearLayout>
 
-                <!-- TDD Column -->
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
