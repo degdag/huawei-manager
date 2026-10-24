@@ -21,7 +21,7 @@ data class TelemetryData(
     val pci: String = "0",
     val cellId: String = "0",
     val tac: String = "0",
-    val enbidCell: String = "0/0",
+    val enbidCell: String = "NaN/0",
     val rssi: String = "-71 dBm",
     val rsrp: String = "-99 dBm",
     val rsrq: String = "-6 dB",
@@ -40,15 +40,15 @@ data class TelemetryData(
     val speedDlBytes: String = " (0B/s)    U : ",
     val speedUlBadge: String = "0.00Kbps",
     val speedUlBytes: String = " (0B/s)",
-    val usersText: String = "1/32",
+    val usersText: String = "4/32",
     val bandWork: String = "B3",
     val bandFreq: String = "1800",
     val mode: String = "7",
     val netMode: String = "03",
     val lteBandHex: String = "4",
-    val txPowerText: String = "4G-TxPower: PPusch:13dBm PPucch:11dBm PSrs:20dBm PPrach:14dBm",
-    val earfcnText: String = "4G-Earfcn: DL: 1850 UL: 19850",
-    val mcsText: String = "4G-MCS: DL0:4  DL1:7  UL:22",
+    val txPowerText: String = "4G-TxPower: PPusch: 16, PPucch: 12, PSrs: 20, PPrach: 14",
+    val earfcnText: String = "4G-Earfcn: DL: 1850  UL: 19850",
+    val mcsText: String = "4G-MCS: DL0:31  DL1:18  UL:15",
     val tbsText: String = "4G-TBS: DL0:0  UL:0",
     val freqBandwidthText: String = "4G-Bandwidth: DL: 20MHz UL: 20MHz (100%)"
 )
@@ -138,7 +138,8 @@ class HilinkClient(var gatewayIp: String = "http://192.168.8.1") {
                 java.lang.Long.toHexString(mask).uppercase()
             }
 
-            val xml = """<?xml version="1.0" encoding="UTF-8"?><request><NetworkMode>03</NetworkMode><NetworkBand>3FFFFFFF</NetworkBand><LTEBand>$hexMask</LTEBand></request>"""
+            // V10 NetMode POST payload including <networkOption></networkOption>
+            val xml = """<?xml version="1.0" encoding="UTF-8"?><request><NetworkMode>03</NetworkMode><NetworkBand>3FFFFFFF</NetworkBand><LTEBand>$hexMask</LTEBand><networkOption></networkOption></request>"""
             val body = xml.toRequestBody("application/xml; charset=UTF-8".toMediaTypeOrNull())
 
             val req = Request.Builder()
@@ -166,7 +167,7 @@ class HilinkClient(var gatewayIp: String = "http://192.168.8.1") {
         try {
             fetchSessionInfo()
             val token = sessionToken ?: ""
-            val xml = """<?xml version="1.0" encoding="UTF-8"?><request><NetworkMode>$mode</NetworkMode><NetworkBand>3FFFFFFF</NetworkBand><LTEBand>7FFFFFFFFFFFFFFF</LTEBand></request>"""
+            val xml = """<?xml version="1.0" encoding="UTF-8"?><request><NetworkMode>$mode</NetworkMode><NetworkBand>3FFFFFFF</NetworkBand><LTEBand>7FFFFFFFFFFFFFFF</LTEBand><networkOption></networkOption></request>"""
             val body = xml.toRequestBody("application/xml; charset=UTF-8".toMediaTypeOrNull())
             val req = Request.Builder()
                 .url("$gatewayIp/api/net/net-mode")
@@ -204,15 +205,23 @@ class HilinkClient(var gatewayIp: String = "http://192.168.8.1") {
                 return if (txt.isBlank()) "0" else txt
             }
 
-            val rawRssi = tag(sig, "rssi").replace("dBm", "", true).trim().toIntOrNull() ?: -71
-            val rawRsrp = tag(sig, "rsrp").replace("dBm", "", true).trim().toIntOrNull() ?: -99
-            val rawRsrq = tag(sig, "rsrq").replace("dB", "", true).trim().toIntOrNull() ?: -6
-            val rawSinr = tag(sig, "sinr").replace("dB", "", true).trim().toIntOrNull() ?: 6
+            fun cleanMetric(raw: String, unit: String): Int {
+                return raw.replace(unit, "", true)
+                    .replace("<", "").replace("=", "").replace(">", "")
+                    .replace("Unknown", "0").replace("NaN", "0")
+                    .trim().toIntOrNull() ?: 0
+            }
 
-            val rssiPct = ((rawRssi + 110) * 100 / 60).coerceIn(0, 100)
-            val rsrpPct = ((rawRsrp + 140) * 100 / 96).coerceIn(0, 100)
-            val rsrqPct = ((rawRsrq + 20) * 100 / 17).coerceIn(0, 100)
-            val sinrPct = ((rawSinr + 10) * 100 / 40).coerceIn(0, 100)
+            val rawRssi = cleanMetric(tag(sig, "rssi"), "dBm").let { if (it == 0) -71 else it }
+            val rawRsrp = cleanMetric(tag(sig, "rsrp"), "dBm").let { if (it == 0) -99 else it }
+            val rawRsrq = cleanMetric(tag(sig, "rsrq"), "dB").let { if (it == 0) -6 else it }
+            val rawSinr = cleanMetric(tag(sig, "sinr"), "dB").let { if (it == 0) 6 else it }
+
+            // Thresholds aligned with main.js: colorrssi, colorrsrp, colorrsrq, colorsinr
+            val rssiPct = ((rawRssi - (-110)) * 100 / ((-51) - (-110))).coerceIn(5, 100)
+            val rsrpPct = ((rawRsrp - (-124)) * 100 / ((-51) - (-124))).coerceIn(5, 100)
+            val rsrqPct = ((rawRsrq - (-20)) * 100 / (0 - (-20))).coerceIn(5, 100)
+            val sinrPct = ((rawSinr - 3) * 100 / (30 - 3)).coerceIn(5, 100)
 
             val dlRateBytes = tag(traffic, "CurrentDownloadRate").toLongOrNull() ?: 0L
             val ulRateBytes = tag(traffic, "CurrentUploadRate").toLongOrNull() ?: 0L
@@ -225,9 +234,15 @@ class HilinkClient(var gatewayIp: String = "http://192.168.8.1") {
             val totUl = tag(traffic, "TotalUpload").toLongOrNull() ?: 0L
             val totTime = tag(traffic, "TotalConnectTime").toLongOrNull() ?: 0L
 
+            // V10 Cell & eNBID calculation (main.js line 1)
             val cellIdStr = tag(sig, "cell_id")
-            val cellIdNum = cellIdStr.toLongOrNull() ?: 0L
-            val enbStr = if (cellIdNum > 256) "${cellIdNum / 256}/${cellIdNum % 256}" else "NaN/$cellIdStr"
+            val cidNum = cellIdStr.toLongOrNull() ?: 0L
+            val hex = java.lang.Long.toHexString(cidNum)
+            val hex2 = if (hex.length > 2) hex.substring(0, hex.length - 2) else ""
+            val enbidStr = if (hex2.isNotEmpty()) java.lang.Long.parseLong(hex2, 16).toString() else "NaN"
+            val hex3 = if (hex.length >= 2) hex.substring(hex.length - 2) else hex
+            val shortCid = if (hex3.isNotEmpty()) java.lang.Long.parseLong(hex3, 16).toString() else cellIdStr
+            val enbidCell = "$enbidStr/$shortCid"
 
             val modelName = tag(devInfo, "DeviceName").ifEmpty { "B612s-25d" }
             val carrierName = tag(plmnDoc, "FullName").ifEmpty { "Orange" }
@@ -236,31 +251,58 @@ class HilinkClient(var gatewayIp: String = "http://192.168.8.1") {
             val curWifi = tag(statusDoc, "CurrentWifiUser").ifEmpty { "4" }
             val totWifi = tag(statusDoc, "TotalWifiUser").ifEmpty { "32" }
 
-            // Clean parsed TxPower & Earfcn
-            val rawTxPower = tag(sig, "txpower").trim()
-            val cleanTxPower = if (rawTxPower.startsWith("PPusch", true)) rawTxPower else "PPusch:13dBm PPucch:11dBm PSrs:20dBm PPrach:14dBm"
-
-            val rawEarfcn = tag(sig, "earfcn").trim()
-            val cleanEarfcn = if (rawEarfcn.contains("DL:", true)) rawEarfcn else "DL: 1850 UL: 19850"
-
-            // Parse MCS numbers using regex
-            val rawMcsDl = tag(sig, "dl_mcs")
-            val rawMcsUl = tag(sig, "ul_mcs")
-            fun extractNum(str: String, key: String): String {
-                val matcher = Pattern.compile("$key:(\\d+)").matcher(str)
-                return if (matcher.find()) matcher.group(1) ?: "0" else "0"
+            // V10 TxPower substitution (main.js line 596)
+            var rawTx = tag(sig, "txpower").trim()
+            val cleanTxPower = if (rawTx.isNotEmpty()) {
+                rawTx.replace("PPusch:", "PPusch: ")
+                    .replace("PPucch:", "PPucch: ")
+                    .replace("PSrs:", "PSrs: ")
+                    .replace("PPrach:", "PPrach: ")
+                    .replaceFirst("dBm", ", ")
+                    .replaceFirst("dBm", ", ")
+                    .replaceFirst("dBm", ", ")
+                    .replaceFirst("dBm", "")
+            } else {
+                "PPusch: 16, PPucch: 12, PSrs: 20, PPrach: 14"
             }
-            val dl0 = extractNum(rawMcsDl, "Code0").ifEmpty { "4" }
-            val dl1 = extractNum(rawMcsDl, "Code1").ifEmpty { "7" }
-            val ul = extractNum(rawMcsUl, "Carrier1").ifEmpty { "22" }
 
-            val rawTbsDl = tag(sig, "dl_tbs")
-            val rawTbsUl = tag(sig, "ul_tbs")
-            val tbsDl = if (rawTbsDl.contains(":")) rawTbsDl.substringAfter(":") else rawTbsDl
-            val tbsUl = if (rawTbsUl.contains(":")) rawTbsUl.substringAfter(":") else rawTbsUl
+            // V10 Earfcn substitution (main.js line 187)
+            val rawEarfcn = tag(sig, "earfcn").trim()
+            val cleanEarfcn = if (rawEarfcn.isNotEmpty()) {
+                rawEarfcn.replace("DL:", "DL: ").replace("UL:", " UL: ")
+            } else {
+                "DL: 1850  UL: 19850"
+            }
 
+            // V10 MCS slice extraction (main.js lines 496-498)
+            val dlmcs = tag(sig, "dl_mcs")
+            var dlmcs0 = "31"
+            var dlmcs1 = "18"
+            if (dlmcs.contains("Code0:") && dlmcs.contains("Code1:")) {
+                try {
+                    dlmcs0 = dlmcs.substring(dlmcs.indexOf("Code0:") + 6, dlmcs.indexOf(" "))
+                    dlmcs1 = dlmcs.substring(dlmcs.indexOf("Code1:") + 6).trim()
+                } catch (e: Exception) {
+                    dlmcs0 = "31"
+                    dlmcs1 = "18"
+                }
+            }
+            val ulMcsRaw = tag(sig, "ul_mcs")
+            val ulMcs = if (ulMcsRaw.contains(":")) ulMcsRaw.substringAfter(":") else "15"
+
+            // TBS extraction
+            val tbsDlRaw = tag(sig, "dl_tbs")
+            val tbsUlRaw = tag(sig, "ul_tbs")
+            val tbs0 = if (tbsDlRaw.contains(":")) tbsDlRaw.substringAfter(":") else "0"
+            val tbsUl = if (tbsUlRaw.contains(":")) tbsUlRaw.substringAfter(":") else "0"
+
+            // Band to Frequency map matching V10
             val bandNum = tag(sig, "band").replace("B", "", true)
-            val freqMap = mapOf("1" to "2100", "3" to "1800", "7" to "2600", "8" to "900", "20" to "800", "28" to "700", "38" to "2600", "40" to "2300", "41" to "2500", "42" to "3500")
+            val freqMap = mapOf(
+                "1" to "2100", "2" to "1900", "3" to "1800", "4" to "1700",
+                "5" to "850", "7" to "2600", "8" to "900", "20" to "800",
+                "28" to "700", "38" to "2600", "40" to "2300", "41" to "2500", "42" to "3500"
+            )
             val freqName = freqMap[bandNum] ?: "1800"
 
             val netModeStr = tag(netModeDoc, "NetworkMode").ifEmpty { "03" }
@@ -274,7 +316,7 @@ class HilinkClient(var gatewayIp: String = "http://192.168.8.1") {
                 pci = tag(sig, "pci"),
                 cellId = cellIdStr,
                 tac = tag(sig, "tac"),
-                enbidCell = enbStr,
+                enbidCell = enbidCell,
                 rssi = "$rawRssi dBm",
                 rsrp = "$rawRsrp dBm",
                 rsrq = "$rawRsrq dB",
@@ -296,13 +338,13 @@ class HilinkClient(var gatewayIp: String = "http://192.168.8.1") {
                 usersText = "$curWifi/$totWifi",
                 bandWork = "B$bandNum",
                 bandFreq = freqName,
-                mode = tag(sig, "mode"),
+                mode = tag(sig, "mode").ifEmpty { "7" },
                 netMode = netModeStr,
                 lteBandHex = lteBandHexStr,
                 txPowerText = "4G-TxPower: $cleanTxPower",
                 earfcnText = "4G-Earfcn: $cleanEarfcn",
-                mcsText = "4G-MCS: DL0:$dl0  DL1:$dl1  UL:$ul",
-                tbsText = "4G-TBS: DL0:$tbsDl  UL:$tbsUl",
+                mcsText = "4G-MCS: DL0:$dlmcs0  DL1:$dlmcs1  UL:$ulMcs",
+                tbsText = "4G-TBS: DL0:$tbs0  UL:$tbsUl",
                 freqBandwidthText = "4G-Bandwidth: DL: ${tag(sig, "dlbandwidth").ifEmpty { "20MHz" }} UL: ${tag(sig, "ulbandwidth").ifEmpty { "20MHz" }} (100%)"
             )
         } catch (e: Exception) {
@@ -347,9 +389,9 @@ class HilinkClient(var gatewayIp: String = "http://192.168.8.1") {
     private fun formatBytes(bytes: Long): String {
         val b = bytes.toDouble()
         return when {
-            b >= 1024.0 * 1024 * 1024 * 1024 -> String.format(Locale.US, "%.2fTB", b / (1024.0 * 1024.0 * 1024.0 * 1024.0))
-            b >= 1024.0 * 1024 * 1024 -> String.format(Locale.US, "%.2fGB", b / (1024.0 * 1024.0 * 1024.0))
-            b >= 1024.0 * 1024 -> String.format(Locale.US, "%.2fMB", b / (1024.0 * 1024.0))
+            b >= 1024.0 * 1024 * 1024 * 1024 -> String.format(Locale.US, "%.2fTB", b / (1024.0 * 1024 * 1024 * 1024))
+            b >= 1024.0 * 1024 * 1024 -> String.format(Locale.US, "%.2fGB", b / (1024.0 * 1024 * 1024))
+            b >= 1024.0 * 1024 -> String.format(Locale.US, "%.2fMB", b / (1024.0 * 1024))
             b >= 1024.0 -> String.format(Locale.US, "%.2fKB", b / 1024.0)
             else -> "${bytes}B"
         }
