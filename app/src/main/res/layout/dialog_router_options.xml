@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="#101721"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="— Router Options —"
+        android:textAlignment="center"
+        android:textColor="@color/text_red"
+        android:textSize="14sp"
+        android:textStyle="bold" />
+
+    <!-- Power section -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="— Power —"
+        android:textAlignment="center"
+        android:textColor="@color/text_yellow"
+        android:textSize="12sp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="horizontal">
+        <Button android:id="@+id/btnOptRestart" android:layout_width="wrap_content" android:layout_height="34dp" android:background="@drawable/pill_dark" android:text="Restart" android:textColor="@color/text_green" android:textSize="10sp"/>
+        <Button android:id="@+id/btnOptShutdown" android:layout_width="wrap_content" android:layout_height="34dp" android:layout_marginHorizontal="6dp" android:background="@drawable/pill_dark" android:text="ShutDown" android:textColor="@color/text_red" android:textSize="10sp"/>
+        <Button android:id="@+id/btnOptDebug" android:layout_width="wrap_content" android:layout_height="34dp" android:background="@drawable/pill_dark" android:text="Debug Mode" android:textColor="@color/btn_cyan" android:textSize="10sp"/>
+    </LinearLayout>
+
+    <!-- Mobile Data IP section -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="— IP Address/Mobile data —"
+        android:textAlignment="center"
+        android:textColor="@color/text_yellow"
+        android:textSize="12sp" />
+
+    <Button
+        android:id="@+id/btnOptRefreshIp"
+        android:layout_width="match_parent"
+        android:layout_height="36dp"
+        android:background="@drawable/pill_dark"
+        android:text="Refresh IP Address"
+        android:textAllCaps="false"
+        android:textColor="#3498DB"
+        android:textSize="11sp" />
+
+    <!-- Statistic section -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="— Statistic —"
+        android:textAlignment="center"
+        android:textColor="@color/text_yellow"
+        android:textSize="12sp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#145A1E"
+        android:orientation="vertical"
+        android:padding="8dp">
+
+        <TextView android:id="@+id/tvStatUptime" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Total Router Uptime : 0 Day 0:00:00" android:textAlignment="center" android:textColor="@color/text_yellow" android:textSize="11sp" />
+        <TextView android:id="@+id/tvStatTotalData" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Total Size Of Data : 0GB" android:textAlignment="center" android:textColor="@color/text_yellow" android:textSize="11sp" />
+        <TextView android:id="@+id/tvStatMonthlyUptime" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Monthly Uptime : 0 Day 0:00:00" android:textAlignment="center" android:textColor="@color/text_yellow" android:textSize="11sp" />
+        <TextView android:id="@+id/tvStatMonthlyData" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Monthly Total Data : 0GB" android:textAlignment="center" android:textColor="@color/text_yellow" android:textSize="11sp" />
+    </LinearLayout>
+</LinearLayout>

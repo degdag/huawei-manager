@@ -1,0 +1,15 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="64dp"
+    android:viewportWidth="96"
+    android:viewportHeight="64">
+    <!-- 8 Multi-colored petals (Nasser Al-anzi icon style) -->
+    <path android:fillColor="#E74C3C" android:pathData="M16,46 C24,42 32,45 36,49 C28,51 20,50 16,46 Z"/>
+    <path android:fillColor="#F39C12" android:pathData="M18,34 C26,30 35,36 38,44 C30,44 23,40 18,34 Z"/>
+    <path android:fillColor="#F1C40F" android:pathData="M26,20 C32,20 40,28 42,38 C34,36 28,29 26,20 Z"/>
+    <path android:fillColor="#2ECC71" android:pathData="M38,12 C44,14 47,24 47,35 C40,31 37,22 38,12 Z"/>
+    <path android:fillColor="#00BCD4" android:pathData="M58,12 C52,14 49,24 49,35 C56,31 59,22 58,12 Z"/>
+    <path android:fillColor="#3498DB" android:pathData="M70,20 C64,20 56,28 54,38 C62,36 68,29 70,20 Z"/>
+    <path android:fillColor="#9B59B6" android:pathData="M78,34 C70,30 61,36 58,44 C66,44 73,40 78,34 Z"/>
+    <path android:fillColor="#E91E63" android:pathData="M80,46 C72,42 64,45 60,49 C68,51 76,50 80,46 Z"/>
+</vector>

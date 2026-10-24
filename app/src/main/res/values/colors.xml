@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg_main">#0A0E14</color>
+    <color name="bg_card">#0F1520</color>
+    <color name="border_blue">#1B2E4B</color>
+    <color name="border_red">#8B0000</color>
+    <color name="table_header_blue">#1E60B5</color>
+    <color name="speed_green">#145A1E</color>
+    <color name="speed_red">#5C1414</color>
+    <color name="pill_dark">#121926</color>
+    <color name="btn_green">#196F3D</color>
+    <color name="btn_red">#922B21</color>
+    <color name="btn_cyan">#117A65</color>
+    <color name="text_red">#E74C3C</color>
+    <color name="text_yellow">#F4D03F</color>
+    <color name="text_green">#58D68D</color>
+</resources>
