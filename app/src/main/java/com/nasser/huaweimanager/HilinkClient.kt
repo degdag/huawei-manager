@@ -37,13 +37,15 @@ data class TelemetryData(
     val netMode: String = "-"
 )
 
-class HilinkClient(var gatewayIp: String = "192.168.8.1") {
+class HilinkClient(var gatewayIp: String = "http://192.168.8.1") {
+
+    private val cookieStore = mutableMapOf<String, Cookie>()
+
     private val client = OkHttpClient.Builder().cookieJar(object : CookieJar {
-        private val cookieStore = mutableListOf<Cookie>()
         override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
-            cookieStore.addAll(cookies)
+            for (c in cookies) cookieStore[c.name] = c
         }
-        override fun loadForRequest(url: HttpUrl): List<Cookie> = cookieStore
+        override fun loadForRequest(url: HttpUrl): List<Cookie> = cookieStore.values.toList()
     }).build()
 
     var sessionToken: String? = null
@@ -57,6 +59,20 @@ class HilinkClient(var gatewayIp: String = "192.168.8.1") {
                 val body = res.body?.string() ?: return@withContext false
                 val doc = parseXml(body)
                 sessionToken = doc.getElementsByTagName("TokInfo").item(0)?.textContent
+
+                val sesInfo = doc.getElementsByTagName("SesInfo").item(0)?.textContent
+                if (!sesInfo.isNullOrEmpty()) {
+                    val parts = sesInfo.split("=")
+                    if (parts.size >= 2) {
+                        val httpUrl = HttpUrl.get(gatewayIp)
+                        val c = Cookie.Builder()
+                            .domain(httpUrl.host)
+                            .name(parts[0].trim())
+                            .value(parts[1].trim())
+                            .build()
+                        cookieStore[c.name] = c
+                    }
+                }
                 true
             }
         } catch (e: Exception) {
@@ -64,16 +80,14 @@ class HilinkClient(var gatewayIp: String = "192.168.8.1") {
         }
     }
 
-    suspend fun login(user: String, pass: String): Boolean = withContext(Dispatchers.IO) {
+    suspend fun login(user: String, pass: String): Pair<Boolean, String> = withContext(Dispatchers.IO) {
         try {
             fetchSessionInfo()
             val token = sessionToken ?: ""
 
-            // Huawei standard login hash: SHA256(user + Base64(SHA256(pass)) + token)
             fun sha256(input: String): String {
                 val md = MessageDigest.getInstance("SHA-256")
-                val digest = md.digest(input.toByteArray())
-                return digest.fold("") { str, it -> str + "%02x".format(it) }
+                return md.digest(input.toByteArray()).fold("") { str, it -> str + "%02x".format(it) }
             }
 
             val passHash = sha256(pass)
@@ -92,8 +106,69 @@ class HilinkClient(var gatewayIp: String = "192.168.8.1") {
 
             client.newCall(req).execute().use { res ->
                 val resp = res.body?.string() ?: ""
-                resp.contains("<response>OK</response>")
+                res.header("__RequestVerificationToken")?.let { sessionToken = it }
+                if (resp.contains("<response>OK</response>")) {
+                    Pair(true, "Login Successful")
+                } else {
+                    val code = if (resp.contains("<code>")) resp.substringAfter("<code>").substringBefore("</code>") else "Unknown"
+                    Pair(false, "Login Error: $code")
+                }
             }
+        } catch (e: Exception) {
+            Pair(false, "Connection Error: ${e.message}")
+        }
+    }
+
+    suspend fun lockBands(bands: List<Int>): Pair<Boolean, String> = withContext(Dispatchers.IO) {
+        try {
+            fetchSessionInfo() // Always refresh token before band lock
+            val token = sessionToken ?: ""
+
+            val hexMask = if (bands.isEmpty()) {
+                "7FFFFFFFFFFFFFFF" // All bands
+            } else {
+                var mask = 0L
+                for (b in bands) mask = mask or (1L shl (b - 1))
+                java.lang.Long.toHexString(mask).uppercase()
+            }
+
+            val xml = """<?xml version="1.0" encoding="UTF-8"?><request><NetworkMode>03</NetworkMode><NetworkBand>3FFFFFFF</NetworkBand><LTEBand>$hexMask</LTEBand></request>"""
+            val body = xml.toRequestBody("application/xml; charset=UTF-8".toMediaTypeOrNull())
+
+            val req = Request.Builder()
+                .url("$gatewayIp/api/net/net-mode")
+                .header("__RequestVerificationToken", token)
+                .header("X-Requested-With", "XMLHttpRequest")
+                .post(body)
+                .build()
+
+            client.newCall(req).execute().use { res ->
+                val resp = res.body?.string() ?: ""
+                res.header("__RequestVerificationToken")?.let { sessionToken = it }
+                if (resp.contains("<response>OK</response>")) {
+                    Pair(true, "Bands Locked to: $hexMask")
+                } else {
+                    val code = if (resp.contains("<code>")) resp.substringAfter("<code>").substringBefore("</code>") else "Denied"
+                    Pair(false, "Router Error Code: $code (Please Login)")
+                }
+            }
+        } catch (e: Exception) {
+            Pair(false, "Request Error: ${e.message}")
+        }
+    }
+
+    suspend fun setNetworkMode(mode: String): Boolean = withContext(Dispatchers.IO) {
+        try {
+            fetchSessionInfo()
+            val token = sessionToken ?: ""
+            val xml = """<?xml version="1.0" encoding="UTF-8"?><request><NetworkMode>$mode</NetworkMode><NetworkBand>3FFFFFFF</NetworkBand><LTEBand>7FFFFFFFFFFFFFFF</LTEBand></request>"""
+            val body = xml.toRequestBody("application/xml; charset=UTF-8".toMediaTypeOrNull())
+            val req = Request.Builder()
+                .url("$gatewayIp/api/net/net-mode")
+                .header("__RequestVerificationToken", token)
+                .post(body)
+                .build()
+            client.newCall(req).execute().use { it.body?.string()?.contains("<response>OK</response>") == true }
         } catch (e: Exception) {
             false
         }
@@ -107,6 +182,7 @@ class HilinkClient(var gatewayIp: String = "192.168.8.1") {
                     .header("__RequestVerificationToken", sessionToken ?: "")
                     .build()
                 return client.newCall(req).execute().use {
+                    it.header("__RequestVerificationToken")?.let { t -> sessionToken = t }
                     it.body?.string()?.let { s -> parseXml(s) }
                 }
             }
@@ -115,7 +191,15 @@ class HilinkClient(var gatewayIp: String = "192.168.8.1") {
             val statusDoc = getXml("/api/monitoring/status")
             val traffic = getXml("/api/monitoring/traffic-statistics")
 
-            fun tag(el: Element?, name: String) = el?.getElementsByTagName(name)?.item(0)?.textContent ?: "0"
+            fun tag(el: Element?, name: String): String {
+                val txt = el?.getElementsByTagName(name)?.item(0)?.textContent ?: ""
+                return if (txt.isBlank()) "0" else txt
+            }
+
+            fun clean(raw: String, unit: String): String {
+                val v = raw.replace(unit, "", ignoreCase = true).trim()
+                return if (v.isEmpty() || v == "0") "0" else "$v$unit"
+            }
 
             val cellIdStr = tag(sig, "cell_id")
             val enb = if (cellIdStr.matches(Regex("\\d+")) && cellIdStr.toLong() > 256) (cellIdStr.toLong() / 256).toString() else "0"
@@ -131,12 +215,12 @@ class HilinkClient(var gatewayIp: String = "192.168.8.1") {
                 cellId = cellIdStr,
                 tac = tag(sig, "tac"),
                 enbid = enb,
-                rssi = "${tag(sig, "rssi")}dBm",
-                rscp = tag(sig, "rscp"),
-                ecio = tag(sig, "ecio"),
-                rsrp = "${tag(sig, "rsrp")}dBm",
-                rsrq = "${tag(sig, "rsrq")}dB",
-                sinr = "${tag(sig, "sinr")}dB",
+                rssi = clean(tag(sig, "rssi"), "dBm"),
+                rscp = clean(tag(sig, "rscp"), "dBm"),
+                ecio = clean(tag(sig, "ecio"), "dB"),
+                rsrp = clean(tag(sig, "rsrp"), "dBm"),
+                rsrq = clean(tag(sig, "rsrq"), "dB"),
+                sinr = clean(tag(sig, "sinr"), "dB"),
                 dlRate = "${curDl / 1024}K/s",
                 ulRate = "${curUl / 1024}K/s",
                 totalRate = "${(curDl + curUl) / 1024}K/s",
@@ -153,30 +237,9 @@ class HilinkClient(var gatewayIp: String = "192.168.8.1") {
         }
     }
 
-    suspend fun lockBands(bands: List<Int>): Boolean = withContext(Dispatchers.IO) {
-        try {
-            var mask = 0L
-            for (b in bands) mask = mask or (1L shl (b - 1))
-            val hex = java.lang.Long.toHexString(mask).uppercase()
-
-            val xml = """<?xml version="1.0" encoding="UTF-8"?><request><NetworkMode>03</NetworkMode><NetworkBand>3FFFFFFF</NetworkBand><LTEBand>$hex</LTEBand></request>"""
-            val body = xml.toRequestBody("application/xml".toMediaTypeOrNull())
-
-            val req = Request.Builder()
-                .url("$gatewayIp/api/net/net-mode")
-                .header("__RequestVerificationToken", sessionToken ?: "")
-                .post(body)
-                .build()
-
-            client.newCall(req).execute().use { it.isSuccessful }
-        } catch (e: Exception) {
-            false
-        }
-    }
-
     suspend fun controlDevice(command: Int): Boolean = withContext(Dispatchers.IO) {
         try {
-            // 1 = Reboot, 2 = Shutdown
+            fetchSessionInfo()
             val xml = """<?xml version="1.0" encoding="UTF-8"?><request><Control>$command</Control></request>"""
             val body = xml.toRequestBody("application/xml".toMediaTypeOrNull())
             val req = Request.Builder()

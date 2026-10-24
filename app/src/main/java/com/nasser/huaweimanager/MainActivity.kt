@@ -2,6 +2,7 @@ package com.nasser.huaweimanager
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.graphics.Color
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -19,7 +20,6 @@ class MainActivity : AppCompatActivity() {
     private val handler = Handler(Looper.getMainLooper())
     private var isPolling = false
 
-    // Views
     private lateinit var tvHeaderIp: TextView
     private lateinit var tvStatus: TextView
     private lateinit var tvModel: TextView
@@ -31,15 +31,20 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvSpeedLive: TextView
     private lateinit var tvDataVolume: TextView
     private lateinit var tvRssiVal: TextView
+    private lateinit var tvRssiEval: TextView
     private lateinit var tvRscpVal: TextView
+    private lateinit var tvRscpEval: TextView
     private lateinit var tvEcioVal: TextView
+    private lateinit var tvEcioEval: TextView
     private lateinit var tvRsrpVal: TextView
+    private lateinit var tvRsrpEval: TextView
     private lateinit var tvRsrqVal: TextView
+    private lateinit var tvRsrqEval: TextView
     private lateinit var tvSinrVal: TextView
+    private lateinit var tvSinrEval: TextView
     private lateinit var tvUsers: TextView
     private lateinit var tvDiagnostic1: TextView
 
-    // Band checkboxes
     private lateinit var cbFdd28: CheckBox
     private lateinit var cbFdd3: CheckBox
     private lateinit var cbFdd1: CheckBox
@@ -49,6 +54,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var cbTdd41: CheckBox
     private lateinit var cbTdd38: CheckBox
     private lateinit var cbTdd42: CheckBox
+
+    private lateinit var rbAuto: RadioButton
+    private lateinit var rb5G: RadioButton
+    private lateinit var rb4G: RadioButton
+    private lateinit var rb3G: RadioButton
+    private lateinit var rb2G: RadioButton
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,6 +74,9 @@ class MainActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             hilink.fetchSessionInfo()
+            val u = prefs.getString("user", "admin") ?: "admin"
+            val p = prefs.getString("pass", "dns12345") ?: "dns12345"
+            hilink.login(u, p)
             startLoop()
         }
     }
@@ -79,11 +93,17 @@ class MainActivity : AppCompatActivity() {
         tvSpeedLive = findViewById(R.id.tvSpeedLive)
         tvDataVolume = findViewById(R.id.tvDataVolume)
         tvRssiVal = findViewById(R.id.tvRssiVal)
+        tvRssiEval = findViewById(R.id.tvRssiEval)
         tvRscpVal = findViewById(R.id.tvRscpVal)
+        tvRscpEval = findViewById(R.id.tvRscpEval)
         tvEcioVal = findViewById(R.id.tvEcioVal)
+        tvEcioEval = findViewById(R.id.tvEcioEval)
         tvRsrpVal = findViewById(R.id.tvRsrpVal)
+        tvRsrpEval = findViewById(R.id.tvRsrpEval)
         tvRsrqVal = findViewById(R.id.tvRsrqVal)
+        tvRsrqEval = findViewById(R.id.tvRsrqEval)
         tvSinrVal = findViewById(R.id.tvSinrVal)
+        tvSinrEval = findViewById(R.id.tvSinrEval)
         tvUsers = findViewById(R.id.btnUsers)
         tvDiagnostic1 = findViewById(R.id.tvDiagnostic1)
 
@@ -97,6 +117,12 @@ class MainActivity : AppCompatActivity() {
         cbTdd38 = findViewById(R.id.cbTdd38)
         cbTdd42 = findViewById(R.id.cbTdd42)
 
+        rbAuto = findViewById(R.id.rbAuto)
+        rb5G = findViewById(R.id.rb5G)
+        rb4G = findViewById(R.id.rb4G)
+        rb3G = findViewById(R.id.rb3G)
+        rb2G = findViewById(R.id.rb2G)
+
         tvHeaderIp.text = hilink.gatewayIp
     }
 
@@ -105,6 +131,20 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnLoginDialog).setOnClickListener { showLoginDialog() }
         findViewById<Button>(R.id.btnRouterOptions).setOnClickListener { showRouterOptionsDialog() }
         findViewById<TextView>(R.id.btnSettingsGear).setOnClickListener { showRouterIpDialog() }
+
+        findViewById<Button>(R.id.btnApplyMode).setOnClickListener {
+            val modeCode = when {
+                rb5G.isChecked -> "08"
+                rb4G.isChecked -> "03"
+                rb3G.isChecked -> "02"
+                rb2G.isChecked -> "01"
+                else -> "00"
+            }
+            lifecycleScope.launch {
+                val ok = hilink.setNetworkMode(modeCode)
+                Toast.makeText(this@MainActivity, if (ok) "Mode Applied!" else "Mode Switch Failed", Toast.LENGTH_SHORT).show()
+            }
+        }
 
         findViewById<Button>(R.id.btnApplyBands).setOnClickListener {
             val list = mutableListOf<Int>()
@@ -119,8 +159,8 @@ class MainActivity : AppCompatActivity() {
             if (cbTdd42.isChecked) list.add(42)
 
             lifecycleScope.launch {
-                val ok = hilink.lockBands(list)
-                Toast.makeText(this@MainActivity, if (ok) "Bands Applied!" else "Lock Failed", Toast.LENGTH_SHORT).show()
+                val (ok, msg) = hilink.lockBands(list)
+                Toast.makeText(this@MainActivity, msg, Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -151,8 +191,8 @@ class MainActivity : AppCompatActivity() {
                 prefs.edit().putString("user", u).putString("pass", p).apply()
 
                 lifecycleScope.launch {
-                    val ok = hilink.login(u, p)
-                    Toast.makeText(this@MainActivity, if (ok) "Login Successful!" else "Login Failed", Toast.LENGTH_SHORT).show()
+                    val (ok, msg) = hilink.login(u, p)
+                    Toast.makeText(this@MainActivity, msg, Toast.LENGTH_SHORT).show()
                 }
             }
             .setNegativeButton("CANCEL", null)
@@ -226,6 +266,46 @@ class MainActivity : AppCompatActivity() {
         tvRsrpVal.text = t.rsrp
         tvRsrqVal.text = t.rsrq
         tvSinrVal.text = t.sinr
+
+        fun setEval(tv: TextView, eval: String) {
+            tv.text = eval
+            tv.setTextColor(when (eval) {
+                "Excellent" -> Color.parseColor("#2ECC71")
+                "Good" -> Color.parseColor("#82E0AA")
+                "Fair" -> Color.parseColor("#F4D03F")
+                "Poor" -> Color.parseColor("#E74C3C")
+                else -> Color.parseColor("#7F8C8D")
+            })
+        }
+
+        val rsrpNum = t.rsrp.replace("dBm", "").trim().toIntOrNull() ?: -140
+        setEval(tvRsrpEval, when {
+            rsrpNum >= -80 -> "Excellent"
+            rsrpNum >= -90 -> "Good"
+            rsrpNum >= -100 -> "Fair"
+            rsrpNum >= -115 -> "Poor"
+            else -> "Offline"
+        })
+
+        val rsrqNum = t.rsrq.replace("dB", "").trim().toIntOrNull() ?: -30
+        setEval(tvRsrqEval, when {
+            rsrqNum >= -10 -> "Excellent"
+            rsrqNum >= -15 -> "Good"
+            rsrqNum >= -20 -> "Fair"
+            else -> "Offline"
+        })
+
+        val sinrNum = t.sinr.replace("dB", "").trim().toIntOrNull() ?: -20
+        setEval(tvSinrEval, when {
+            sinrNum >= 20 -> "Excellent"
+            sinrNum >= 13 -> "Good"
+            sinrNum >= 0 -> "Fair"
+            else -> "Offline"
+        })
+
+        setEval(tvRssiEval, if (t.status == "Connected") "Good" else "Offline")
+        setEval(tvRscpEval, if (t.rscp != "0" && t.rscp.isNotEmpty()) "Good" else "Offline")
+        setEval(tvEcioEval, if (t.ecio != "0" && t.ecio.isNotEmpty()) "Good" else "Offline")
 
         tvUsers.text = "Users ${t.usersCount}"
         tvDiagnostic1.text = "BandWork : ${t.bandWork}  Mode : ${t.mode}  NetMode : ${t.netMode}"

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/bg_main"
@@ -147,19 +148,21 @@
             android:layout_marginBottom="12dp"
             android:orientation="horizontal">
 
-            <Button
+            <androidx.appcompat.widget.AppCompatButton
                 android:id="@+id/btnHomePage"
+                app:backgroundTint="@null"
                 android:layout_width="0dp"
                 android:layout_height="36dp"
                 android:layout_weight="1"
                 android:background="@drawable/pill_yellow"
                 android:text="Home Page"
                 android:textAllCaps="false"
-                android:textColor="@color/text_yellow"
+                android:textColor="#F4D03F"
                 android:textSize="11sp" />
 
-            <Button
+            <androidx.appcompat.widget.AppCompatButton
                 android:id="@+id/btnRouterOptions"
+                app:backgroundTint="@null"
                 android:layout_width="0dp"
                 android:layout_height="36dp"
                 android:layout_marginHorizontal="6dp"
@@ -167,18 +170,19 @@
                 android:background="@drawable/pill_yellow"
                 android:text="Router Options"
                 android:textAllCaps="false"
-                android:textColor="@color/text_yellow"
+                android:textColor="#F4D03F"
                 android:textSize="11sp" />
 
-            <Button
+            <androidx.appcompat.widget.AppCompatButton
                 android:id="@+id/btnLoginDialog"
+                app:backgroundTint="@null"
                 android:layout_width="0dp"
                 android:layout_height="36dp"
                 android:layout_weight="1"
                 android:background="@drawable/pill_yellow"
                 android:text="Login Page"
                 android:textAllCaps="false"
-                android:textColor="@color/text_yellow"
+                android:textColor="#F4D03F"
                 android:textSize="11sp" />
         </LinearLayout>
 
@@ -200,7 +204,6 @@
             android:orientation="vertical"
             android:padding="2dp">
 
-            <!-- Table Row 1 -->
             <TableLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -255,7 +258,7 @@
                 android:textSize="11sp"
                 android:textStyle="bold" />
 
-            <!-- Signal Strength Telemetry Table -->
+            <!-- Telemetry Table -->
             <TableLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -319,25 +322,28 @@
             android:layout_height="wrap_content"
             android:layout_marginBottom="12dp"
             android:background="@drawable/box_section"
-            android:gravity="center"
+            android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:padding="8dp">
+            android:padding="6dp">
 
-            <Button
+            <androidx.appcompat.widget.AppCompatButton
                 android:id="@+id/btnSpeedTest"
+                app:backgroundTint="@null"
                 android:layout_width="wrap_content"
                 android:layout_height="32dp"
-                android:background="@drawable/pill_dark"
+                android:background="@drawable/pill_green"
+                android:paddingHorizontal="10dp"
                 android:text="Speed Test"
                 android:textAllCaps="false"
-                android:textColor="@color/text_green"
+                android:textColor="#FFFFFF"
                 android:textSize="10sp" />
 
             <RadioGroup
                 android:id="@+id/rgNetMode"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginHorizontal="4dp"
+                android:layout_weight="1"
+                android:gravity="center"
                 android:orientation="horizontal">
                 <RadioButton android:id="@+id/rbAuto" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Auto" android:textColor="#FFF" android:textSize="10sp" android:checked="true" />
                 <RadioButton android:id="@+id/rb5G" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="5G" android:textColor="#FFF" android:textSize="10sp" />
@@ -346,24 +352,26 @@
                 <RadioButton android:id="@+id/rb2G" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="2G" android:textColor="#FFF" android:textSize="10sp" />
             </RadioGroup>
 
-            <Button
+            <androidx.appcompat.widget.AppCompatButton
                 android:id="@+id/btnApplyMode"
+                app:backgroundTint="@null"
                 android:layout_width="wrap_content"
                 android:layout_height="32dp"
-                android:background="@drawable/pill_dark"
+                android:background="@drawable/pill_green"
+                android:paddingHorizontal="12dp"
                 android:text="Apply"
                 android:textAllCaps="false"
-                android:textColor="@color/text_green"
+                android:textColor="#FFFFFF"
                 android:textSize="10sp" />
 
             <TextView
                 android:id="@+id/btnSettingsGear"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
+                android:layout_marginStart="8dp"
                 android:text="⚙"
                 android:textColor="@color/text_red"
-                android:textSize="20sp" />
+                android:textSize="22sp" />
         </LinearLayout>
 
         <!-- SECTION: Band Lock -->
@@ -436,16 +444,18 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <Button
+            <androidx.appcompat.widget.AppCompatButton
                 android:id="@+id/btnApplyBands"
+                app:backgroundTint="@null"
                 android:layout_width="match_parent"
-                android:layout_height="36dp"
+                android:layout_height="38dp"
                 android:layout_marginTop="8dp"
-                android:background="@drawable/pill_yellow"
+                android:background="@drawable/pill_red"
                 android:text="Apply Band Lock"
                 android:textAllCaps="false"
-                android:textColor="@color/text_yellow"
-                android:textSize="11sp" />
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"
+                android:textStyle="bold" />
         </LinearLayout>
     </LinearLayout>
 </ScrollView>
