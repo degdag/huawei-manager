@@ -64,9 +64,15 @@ class HilinkClient(var gatewayIp: String = "http://192.168.8.1") {
                 if (!sesInfo.isNullOrEmpty()) {
                     val parts = sesInfo.split("=")
                     if (parts.size >= 2) {
-                        val httpUrl = HttpUrl.get(gatewayIp)
+                        // Extract hostname cleanly without OkHttp extension issues
+                        val cleanHost = gatewayIp
+                            .removePrefix("http://")
+                            .removePrefix("https://")
+                            .substringBefore("/")
+                            .substringBefore(":")
+
                         val c = Cookie.Builder()
-                            .domain(httpUrl.host)
+                            .domain(cleanHost)
                             .name(parts[0].trim())
                             .value(parts[1].trim())
                             .build()
