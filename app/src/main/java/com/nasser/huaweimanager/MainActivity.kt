@@ -2,6 +2,7 @@ package com.nasser.huaweimanager
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.graphics.Color
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -60,6 +61,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvFreqBandwidth: TextView
     private lateinit var btnUsers: TextView
 
+    private lateinit var cb3G_B8: CheckBox
+    private lateinit var cb3G_B1: CheckBox
     private lateinit var cbFdd20: CheckBox
     private lateinit var cbFdd8: CheckBox
     private lateinit var cbFdd3: CheckBox
@@ -142,6 +145,8 @@ class MainActivity : AppCompatActivity() {
         tvFreqBandwidth = findViewById(R.id.tvFreqBandwidth)
         btnUsers = findViewById(R.id.btnUsers)
 
+        cb3G_B8 = findViewById(R.id.cb3G_B8)
+        cb3G_B1 = findViewById(R.id.cb3G_B1)
         cbFdd20 = findViewById(R.id.cbFdd20)
         cbFdd8 = findViewById(R.id.cbFdd8)
         cbFdd3 = findViewById(R.id.cbFdd3)
@@ -170,10 +175,10 @@ class MainActivity : AppCompatActivity() {
         fun setModePills(sel: TextView, code: String) {
             listOf(optAuto, opt4G, opt3G, opt2G).forEach {
                 it.setBackgroundResource(R.drawable.pill_dark)
-                it.setTextColor(android.graphics.Color.parseColor("#AAAAAA"))
+                it.setTextColor(Color.parseColor("#AAAAAA"))
             }
             sel.setBackgroundResource(R.drawable.pill_green)
-            sel.setTextColor(android.graphics.Color.WHITE)
+            sel.setTextColor(Color.WHITE)
             selectedMode = code
         }
 
@@ -253,6 +258,7 @@ class MainActivity : AppCompatActivity() {
             .setPositiveButton("SAVE") { _, _ ->
                 var ip = et.text.toString().trim()
                 if (!ip.startsWith("http")) ip = "http://$ip"
+                if (!ip.endsWith("/")) ip = "$ip/"
                 hilink.gatewayIp = ip
                 prefs.edit().putString("router_ip", ip).apply()
                 tvHeaderIp.text = ip
