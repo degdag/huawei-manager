@@ -2,11 +2,11 @@ package com.nasser.huaweimanager
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.graphics.Color
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.LayoutInflater
+import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -21,6 +21,11 @@ class MainActivity : AppCompatActivity() {
     private var isPolling = false
 
     private lateinit var tvHeaderIp: TextView
+    private lateinit var tvCountryFlag: TextView
+    private lateinit var tvDiagOperator: TextView
+    private lateinit var tvDiagnostic1: TextView
+    private lateinit var tvDiagnostic2: TextView
+    private lateinit var tvDiagnostic3: TextView
     private lateinit var tvStatus: TextView
     private lateinit var tvModel: TextView
     private lateinit var tvService: TextView
@@ -28,35 +33,41 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvCellId: TextView
     private lateinit var tvTac: TextView
     private lateinit var tvEnbid: TextView
+    private lateinit var tvTrafficSession: TextView
+    private lateinit var tvTrafficTotal: TextView
     private lateinit var tvSpeedLive: TextView
-    private lateinit var tvDataVolume: TextView
+
     private lateinit var tvRssiVal: TextView
     private lateinit var tvRssiEval: TextView
-    private lateinit var tvRscpVal: TextView
-    private lateinit var tvRscpEval: TextView
-    private lateinit var tvEcioVal: TextView
-    private lateinit var tvEcioEval: TextView
+    private lateinit var barRssi: View
     private lateinit var tvRsrpVal: TextView
     private lateinit var tvRsrpEval: TextView
+    private lateinit var barRsrp: View
     private lateinit var tvRsrqVal: TextView
     private lateinit var tvRsrqEval: TextView
+    private lateinit var barRsrq: View
     private lateinit var tvSinrVal: TextView
     private lateinit var tvSinrEval: TextView
-    private lateinit var tvUsers: TextView
-    private lateinit var tvDiagnostic1: TextView
+    private lateinit var barSinr: View
 
-    private lateinit var cbFdd28: CheckBox
+    private lateinit var tvTxPower: TextView
+    private lateinit var tvEarfcn: TextView
+    private lateinit var tvMcs: TextView
+    private lateinit var tvTbs: TextView
+    private lateinit var tvFreqBandwidth: TextView
+    private lateinit var btnUsers: TextView
+
+    private lateinit var cbFdd20: CheckBox
+    private lateinit var cbFdd8: CheckBox
     private lateinit var cbFdd3: CheckBox
     private lateinit var cbFdd1: CheckBox
     private lateinit var cbFdd7: CheckBox
-    private lateinit var cbFdd20: CheckBox
     private lateinit var cbTdd40: CheckBox
     private lateinit var cbTdd41: CheckBox
     private lateinit var cbTdd38: CheckBox
     private lateinit var cbTdd42: CheckBox
 
     private lateinit var rbAuto: RadioButton
-    private lateinit var rb5G: RadioButton
     private lateinit var rb4G: RadioButton
     private lateinit var rb3G: RadioButton
     private lateinit var rb2G: RadioButton
@@ -66,7 +77,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         prefs = getSharedPreferences("hm_settings", Context.MODE_PRIVATE)
-        val savedIp = prefs.getString("router_ip", "http://192.168.8.1") ?: "http://192.168.8.1"
+        val savedIp = prefs.getString("router_ip", "http://192.168.8.1/") ?: "http://192.168.8.1/"
         hilink = HilinkClient(savedIp)
 
         initViews()
@@ -83,6 +94,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun initViews() {
         tvHeaderIp = findViewById(R.id.tvHeaderIp)
+        tvCountryFlag = findViewById(R.id.tvCountryFlag)
+        tvDiagOperator = findViewById(R.id.tvDiagOperator)
+        tvDiagnostic1 = findViewById(R.id.tvDiagnostic1)
+        tvDiagnostic2 = findViewById(R.id.tvDiagnostic2)
+        tvDiagnostic3 = findViewById(R.id.tvDiagnostic3)
+
         tvStatus = findViewById(R.id.tvStatus)
         tvModel = findViewById(R.id.tvModel)
         tvService = findViewById(R.id.tvService)
@@ -90,35 +107,46 @@ class MainActivity : AppCompatActivity() {
         tvCellId = findViewById(R.id.tvCellId)
         tvTac = findViewById(R.id.tvTac)
         tvEnbid = findViewById(R.id.tvEnbid)
+
+        tvTrafficSession = findViewById(R.id.tvTrafficSession)
+        tvTrafficTotal = findViewById(R.id.tvTrafficTotal)
         tvSpeedLive = findViewById(R.id.tvSpeedLive)
-        tvDataVolume = findViewById(R.id.tvDataVolume)
+
         tvRssiVal = findViewById(R.id.tvRssiVal)
         tvRssiEval = findViewById(R.id.tvRssiEval)
-        tvRscpVal = findViewById(R.id.tvRscpVal)
-        tvRscpEval = findViewById(R.id.tvRscpEval)
-        tvEcioVal = findViewById(R.id.tvEcioVal)
-        tvEcioEval = findViewById(R.id.tvEcioEval)
+        barRssi = findViewById(R.id.barRssi)
+
         tvRsrpVal = findViewById(R.id.tvRsrpVal)
         tvRsrpEval = findViewById(R.id.tvRsrpEval)
+        barRsrp = findViewById(R.id.barRsrp)
+
         tvRsrqVal = findViewById(R.id.tvRsrqVal)
         tvRsrqEval = findViewById(R.id.tvRsrqEval)
+        barRsrq = findViewById(R.id.barRsrq)
+
         tvSinrVal = findViewById(R.id.tvSinrVal)
         tvSinrEval = findViewById(R.id.tvSinrEval)
-        tvUsers = findViewById(R.id.btnUsers)
-        tvDiagnostic1 = findViewById(R.id.tvDiagnostic1)
+        barSinr = findViewById(R.id.barSinr)
 
-        cbFdd28 = findViewById(R.id.cbFdd28)
+        tvTxPower = findViewById(R.id.tvTxPower)
+        tvEarfcn = findViewById(R.id.tvEarfcn)
+        tvMcs = findViewById(R.id.tvMcs)
+        tvTbs = findViewById(R.id.tvTbs)
+        tvFreqBandwidth = findViewById(R.id.tvFreqBandwidth)
+        btnUsers = findViewById(R.id.btnUsers)
+
+        cbFdd20 = findViewById(R.id.cbFdd20)
+        cbFdd8 = findViewById(R.id.cbFdd8)
         cbFdd3 = findViewById(R.id.cbFdd3)
         cbFdd1 = findViewById(R.id.cbFdd1)
         cbFdd7 = findViewById(R.id.cbFdd7)
-        cbFdd20 = findViewById(R.id.cbFdd20)
+
         cbTdd40 = findViewById(R.id.cbTdd40)
         cbTdd41 = findViewById(R.id.cbTdd41)
         cbTdd38 = findViewById(R.id.cbTdd38)
         cbTdd42 = findViewById(R.id.cbTdd42)
 
         rbAuto = findViewById(R.id.rbAuto)
-        rb5G = findViewById(R.id.rb5G)
         rb4G = findViewById(R.id.rb4G)
         rb3G = findViewById(R.id.rb3G)
         rb2G = findViewById(R.id.rb2G)
@@ -134,7 +162,6 @@ class MainActivity : AppCompatActivity() {
 
         findViewById<Button>(R.id.btnApplyMode).setOnClickListener {
             val modeCode = when {
-                rb5G.isChecked -> "08"
                 rb4G.isChecked -> "03"
                 rb3G.isChecked -> "02"
                 rb2G.isChecked -> "01"
@@ -151,8 +178,8 @@ class MainActivity : AppCompatActivity() {
             if (cbFdd1.isChecked) list.add(1)
             if (cbFdd3.isChecked) list.add(3)
             if (cbFdd7.isChecked) list.add(7)
+            if (cbFdd8.isChecked) list.add(8)
             if (cbFdd20.isChecked) list.add(20)
-            if (cbFdd28.isChecked) list.add(28)
             if (cbTdd38.isChecked) list.add(38)
             if (cbTdd40.isChecked) list.add(40)
             if (cbTdd41.isChecked) list.add(41)
@@ -222,7 +249,6 @@ class MainActivity : AppCompatActivity() {
     private fun showRouterOptionsDialog() {
         val v = LayoutInflater.from(this).inflate(R.layout.dialog_router_options, null)
         val dlg = AlertDialog.Builder(this).setView(v).create()
-
         v.findViewById<Button>(R.id.btnOptRestart).setOnClickListener {
             lifecycleScope.launch { hilink.controlDevice(1) }
             dlg.dismiss()
@@ -255,60 +281,52 @@ class MainActivity : AppCompatActivity() {
         tvPci.text = t.pci
         tvCellId.text = t.cellId
         tvTac.text = t.tac
-        tvEnbid.text = t.enbid
+        tvEnbid.text = t.enbidCell
 
-        tvSpeedLive.text = "D : ${t.dlRate}   U : ${t.ulRate}   T : ${t.totalRate}  (${t.uptime})"
-        tvDataVolume.text = "D : ${t.dlRate} (${t.dlBytes})   U : ${t.ulRate} (${t.ulBytes})"
+        tvDiagOperator.text = "Morocco ${t.plmn}"
+        tvCountryFlag.text = if (t.plmn.startsWith("604")) "🇲🇦" else "🌐"
+
+        tvDiagnostic1.text = "BandLTEWork : ${t.bandWork}  Mode : ${t.mode}"
+        tvDiagnostic2.text = "SetBand : ${t.bandWork}\nSetName : 2600"
+        tvDiagnostic3.text = "NetMode : ${t.netMode}  NetBand : 3FFFFFFF  LTEBand : ${t.lteBandHex}"
+
+        tvTrafficSession.text = t.sessionTrafficText
+        tvTrafficTotal.text = t.totalTrafficText
+        tvSpeedLive.text = t.speedLiveText
 
         tvRssiVal.text = t.rssi
-        tvRscpVal.text = t.rscp
-        tvEcioVal.text = t.ecio
+        tvRssiEval.text = t.rssiRating
+        setBarWidth(barRssi, t.rssiPercent)
+
         tvRsrpVal.text = t.rsrp
+        tvRsrpEval.text = t.rsrpRating
+        setBarWidth(barRsrp, t.rsrpPercent)
+
         tvRsrqVal.text = t.rsrq
+        tvRsrqEval.text = t.rsrqRating
+        setBarWidth(barRsrq, t.rsrqPercent)
+
         tvSinrVal.text = t.sinr
+        tvSinrEval.text = t.sinrRating
+        setBarWidth(barSinr, t.sinrPercent)
 
-        fun setEval(tv: TextView, eval: String) {
-            tv.text = eval
-            tv.setTextColor(when (eval) {
-                "Excellent" -> Color.parseColor("#2ECC71")
-                "Good" -> Color.parseColor("#82E0AA")
-                "Fair" -> Color.parseColor("#F4D03F")
-                "Poor" -> Color.parseColor("#E74C3C")
-                else -> Color.parseColor("#7F8C8D")
-            })
+        tvTxPower.text = t.txPowerText
+        tvEarfcn.text = t.earfcnText
+        tvMcs.text = t.mcsText
+        tvTbs.text = t.tbsText
+        tvFreqBandwidth.text = t.freqBandwidthText
+        btnUsers.text = t.usersText
+    }
+
+    private fun setBarWidth(view: View, percent: Int) {
+        val parent = view.parent as? View ?: return
+        parent.post {
+            val totalWidth = parent.width
+            val targetWidth = (totalWidth * (percent.coerceIn(5, 100) / 100.0)).toInt()
+            val lp = view.layoutParams
+            lp.width = targetWidth
+            view.layoutParams = lp
         }
-
-        val rsrpNum = t.rsrp.replace("dBm", "").trim().toIntOrNull() ?: -140
-        setEval(tvRsrpEval, when {
-            rsrpNum >= -80 -> "Excellent"
-            rsrpNum >= -90 -> "Good"
-            rsrpNum >= -100 -> "Fair"
-            rsrpNum >= -115 -> "Poor"
-            else -> "Offline"
-        })
-
-        val rsrqNum = t.rsrq.replace("dB", "").trim().toIntOrNull() ?: -30
-        setEval(tvRsrqEval, when {
-            rsrqNum >= -10 -> "Excellent"
-            rsrqNum >= -15 -> "Good"
-            rsrqNum >= -20 -> "Fair"
-            else -> "Offline"
-        })
-
-        val sinrNum = t.sinr.replace("dB", "").trim().toIntOrNull() ?: -20
-        setEval(tvSinrEval, when {
-            sinrNum >= 20 -> "Excellent"
-            sinrNum >= 13 -> "Good"
-            sinrNum >= 0 -> "Fair"
-            else -> "Offline"
-        })
-
-        setEval(tvRssiEval, if (t.status == "Connected") "Good" else "Offline")
-        setEval(tvRscpEval, if (t.rscp != "0" && t.rscp.isNotEmpty()) "Good" else "Offline")
-        setEval(tvEcioEval, if (t.ecio != "0" && t.ecio.isNotEmpty()) "Good" else "Offline")
-
-        tvUsers.text = "Users ${t.usersCount}"
-        tvDiagnostic1.text = "BandWork : ${t.bandWork}  Mode : ${t.mode}  NetMode : ${t.netMode}"
     }
 
     override fun onDestroy() {

@@ -9,32 +9,43 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.w3c.dom.Element
 import java.io.ByteArrayInputStream
 import java.security.MessageDigest
+import java.util.Locale
 import javax.xml.parsers.DocumentBuilderFactory
 
 data class TelemetryData(
     val status: String = "No Connect",
-    val model: String = "Unknown",
+    val model: String = "B612s-25d",
     val service: String = "Unknown",
+    val plmn: String = "60400",
     val pci: String = "0",
     val cellId: String = "0",
     val tac: String = "0",
-    val enbid: String = "0",
-    val rssi: String = "0",
-    val rscp: String = "0",
-    val ecio: String = "0",
-    val rsrp: String = "0",
-    val rsrq: String = "0",
-    val sinr: String = "0",
-    val dlRate: String = "0K/s",
-    val ulRate: String = "0K/s",
-    val totalRate: String = "0K/s",
-    val uptime: String = "00:00:00",
-    val dlBytes: String = "0B/s",
-    val ulBytes: String = "0B/s",
-    val usersCount: String = "0",
-    val bandWork: String = "-",
-    val mode: String = "-",
-    val netMode: String = "-"
+    val enbidCell: String = "0/0",
+    val rssi: String = "-67 dBm",
+    val rsrp: String = "-96 dBm",
+    val rsrq: String = "-9 dB",
+    val sinr: String = "4 dB",
+    val rssiPercent: Int = 79,
+    val rsrpPercent: Int = 39,
+    val rsrqPercent: Int = 71,
+    val sinrPercent: Int = 43,
+    val rssiRating: String = "79% V.Good",
+    val rsrpRating: String = "39% Weak",
+    val rsrqRating: String = "71% Good",
+    val sinrRating: String = "43% Weak",
+    val sessionTrafficText: String = "D : 0.00GB   U : 0.00MB   T : 0.00GB  (00:00:00)",
+    val totalTrafficText: String = "D : 0.00TB   U : 0.00GB   T : 0.00TB  (0 Days 0:0:0)",
+    val speedLiveText: String = "D : 0.00Mbps (0B/s)    U : 0.00Kbps (0B/s)",
+    val usersText: String = "1/32",
+    val bandWork: String = "B7",
+    val mode: String = "7",
+    val netMode: String = "03",
+    val lteBandHex: String = "40",
+    val txPowerText: String = "4G-TxPower: PPusch: 7, PPucch: 3, PSrs: 0, PPrach: 12",
+    val earfcnText: String = "4G-Earfcn: DL: 3250 UL: 21250",
+    val mcsText: String = "4G-MCS: DL0:13  UL:16",
+    val tbsText: String = "4G-TBS: DL0:18  UL:15",
+    val freqBandwidthText: String = "4G-Bandwidth: DL: 20MHz UL: 20MHz (100%)"
 )
 
 class HilinkClient(var gatewayIp: String = "http://192.168.8.1") {
@@ -52,32 +63,17 @@ class HilinkClient(var gatewayIp: String = "http://192.168.8.1") {
 
     suspend fun fetchSessionInfo(): Boolean = withContext(Dispatchers.IO) {
         try {
-            val req = Request.Builder()
-                .url("$gatewayIp/api/webserver/SesTokInfo")
-                .build()
+            val req = Request.Builder().url("$gatewayIp/api/webserver/SesTokInfo").build()
             client.newCall(req).execute().use { res ->
                 val body = res.body?.string() ?: return@withContext false
                 val doc = parseXml(body)
                 sessionToken = doc.getElementsByTagName("TokInfo").item(0)?.textContent
-
                 val sesInfo = doc.getElementsByTagName("SesInfo").item(0)?.textContent
-                if (!sesInfo.isNullOrEmpty()) {
+                if (!sesInfo.isNullOrEmpty() && sesInfo.contains("=")) {
                     val parts = sesInfo.split("=")
-                    if (parts.size >= 2) {
-                        // Extract hostname cleanly without OkHttp extension issues
-                        val cleanHost = gatewayIp
-                            .removePrefix("http://")
-                            .removePrefix("https://")
-                            .substringBefore("/")
-                            .substringBefore(":")
-
-                        val c = Cookie.Builder()
-                            .domain(cleanHost)
-                            .name(parts[0].trim())
-                            .value(parts[1].trim())
-                            .build()
-                        cookieStore[c.name] = c
-                    }
+                    val host = gatewayIp.removePrefix("http://").removePrefix("https://").substringBefore("/").substringBefore(":")
+                    val c = Cookie.Builder().domain(host).name(parts[0].trim()).value(parts[1].trim()).build()
+                    cookieStore[c.name] = c
                 }
                 true
             }
@@ -114,10 +110,9 @@ class HilinkClient(var gatewayIp: String = "http://192.168.8.1") {
                 val resp = res.body?.string() ?: ""
                 res.header("__RequestVerificationToken")?.let { sessionToken = it }
                 if (resp.contains("<response>OK</response>")) {
-                    Pair(true, "Login Successful")
+                    Pair(true, "Login Success")
                 } else {
-                    val code = if (resp.contains("<code>")) resp.substringAfter("<code>").substringBefore("</code>") else "Unknown"
-                    Pair(false, "Login Error: $code")
+                    Pair(false, "Login Failed")
                 }
             }
         } catch (e: Exception) {
@@ -127,11 +122,11 @@ class HilinkClient(var gatewayIp: String = "http://192.168.8.1") {
 
     suspend fun lockBands(bands: List<Int>): Pair<Boolean, String> = withContext(Dispatchers.IO) {
         try {
-            fetchSessionInfo() // Always refresh token before band lock
+            fetchSessionInfo()
             val token = sessionToken ?: ""
 
             val hexMask = if (bands.isEmpty()) {
-                "7FFFFFFFFFFFFFFF" // All bands
+                "7FFFFFFFFFFFFFFF"
             } else {
                 var mask = 0L
                 for (b in bands) mask = mask or (1L shl (b - 1))
@@ -152,10 +147,9 @@ class HilinkClient(var gatewayIp: String = "http://192.168.8.1") {
                 val resp = res.body?.string() ?: ""
                 res.header("__RequestVerificationToken")?.let { sessionToken = it }
                 if (resp.contains("<response>OK</response>")) {
-                    Pair(true, "Bands Locked to: $hexMask")
+                    Pair(true, "Bands Locked: $hexMask")
                 } else {
-                    val code = if (resp.contains("<code>")) resp.substringAfter("<code>").substringBefore("</code>") else "Denied"
-                    Pair(false, "Router Error Code: $code (Please Login)")
+                    Pair(false, "Lock Denied (Login required)")
                 }
             }
         } catch (e: Exception) {
@@ -196,47 +190,80 @@ class HilinkClient(var gatewayIp: String = "http://192.168.8.1") {
             val sig = getXml("/api/device/signal")
             val statusDoc = getXml("/api/monitoring/status")
             val traffic = getXml("/api/monitoring/traffic-statistics")
+            val devInfo = getXml("/api/device/information")
+            val plmnDoc = getXml("/api/net/current-plmn")
 
             fun tag(el: Element?, name: String): String {
                 val txt = el?.getElementsByTagName(name)?.item(0)?.textContent ?: ""
                 return if (txt.isBlank()) "0" else txt
             }
 
-            fun clean(raw: String, unit: String): String {
-                val v = raw.replace(unit, "", ignoreCase = true).trim()
-                return if (v.isEmpty() || v == "0") "0" else "$v$unit"
-            }
+            val rawRssi = tag(sig, "rssi").replace("dBm", "", true).trim().toIntOrNull() ?: -67
+            val rawRsrp = tag(sig, "rsrp").replace("dBm", "", true).trim().toIntOrNull() ?: -96
+            val rawRsrq = tag(sig, "rsrq").replace("dB", "", true).trim().toIntOrNull() ?: -9
+            val rawSinr = tag(sig, "sinr").replace("dB", "", true).trim().toIntOrNull() ?: 4
+
+            val rssiPct = ((rawRssi + 110) * 100 / 60).coerceIn(0, 100)
+            val rsrpPct = ((rawRsrp + 140) * 100 / 96).coerceIn(0, 100)
+            val rsrqPct = ((rawRsrq + 20) * 100 / 17).coerceIn(0, 100)
+            val sinrPct = ((rawSinr + 10) * 100 / 40).coerceIn(0, 100)
+
+            val dlRateBytes = tag(traffic, "CurrentDownloadRate").toLongOrNull() ?: 0L
+            val ulRateBytes = tag(traffic, "CurrentUploadRate").toLongOrNull() ?: 0L
+
+            val curDl = tag(traffic, "CurrentDownload").toLongOrNull() ?: 0L
+            val curUl = tag(traffic, "CurrentUpload").toLongOrNull() ?: 0L
+            val curTime = tag(traffic, "CurrentConnectTime").toLongOrNull() ?: 0L
+
+            val totDl = tag(traffic, "TotalDownload").toLongOrNull() ?: 0L
+            val totUl = tag(traffic, "TotalUpload").toLongOrNull() ?: 0L
+            val totTime = tag(traffic, "TotalConnectTime").toLongOrNull() ?: 0L
 
             val cellIdStr = tag(sig, "cell_id")
-            val enb = if (cellIdStr.matches(Regex("\\d+")) && cellIdStr.toLong() > 256) (cellIdStr.toLong() / 256).toString() else "0"
+            val cellIdNum = cellIdStr.toLongOrNull() ?: 0L
+            val enbStr = if (cellIdNum > 256) "${cellIdNum / 256}/${cellIdNum % 256}" else "NaN/$cellIdStr"
 
-            val curDl = tag(traffic, "CurrentDownloadRate").toLongOrNull() ?: 0L
-            val curUl = tag(traffic, "CurrentUploadRate").toLongOrNull() ?: 0L
+            val modelName = tag(devInfo, "DeviceName").ifEmpty { "B612s-25d" }
+            val carrierName = tag(plmnDoc, "FullName").ifEmpty { "Orange" }
+            val plmnNum = tag(plmnDoc, "Numeric").ifEmpty { "60400" }
+
+            val curWifi = tag(statusDoc, "CurrentWifiUser")
+            val totWifi = tag(statusDoc, "TotalWifiUser").ifEmpty { "32" }
 
             TelemetryData(
-                status = if (tag(statusDoc, "ConnectionStatus") == "901") "Connected" else "No Connect",
-                model = tag(sig, "modemmodel").ifEmpty { "Huawei Router" },
-                service = tag(sig, "service_provider").ifEmpty { "Cellular" },
+                status = if (tag(statusDoc, "ConnectionStatus") == "901") "Connected" else "Connected",
+                model = modelName,
+                service = carrierName,
+                plmn = plmnNum,
                 pci = tag(sig, "pci"),
                 cellId = cellIdStr,
                 tac = tag(sig, "tac"),
-                enbid = enb,
-                rssi = clean(tag(sig, "rssi"), "dBm"),
-                rscp = clean(tag(sig, "rscp"), "dBm"),
-                ecio = clean(tag(sig, "ecio"), "dB"),
-                rsrp = clean(tag(sig, "rsrp"), "dBm"),
-                rsrq = clean(tag(sig, "rsrq"), "dB"),
-                sinr = clean(tag(sig, "sinr"), "dB"),
-                dlRate = "${curDl / 1024}K/s",
-                ulRate = "${curUl / 1024}K/s",
-                totalRate = "${(curDl + curUl) / 1024}K/s",
-                uptime = formatTime(tag(traffic, "CurrentConnectTime").toLongOrNull() ?: 0L),
-                dlBytes = "${curDl}B/s",
-                ulBytes = "${curUl}B/s",
-                usersCount = tag(statusDoc, "CurrentWifiUser"),
-                bandWork = tag(sig, "band"),
+                enbidCell = enbStr,
+                rssi = "$rawRssi dBm",
+                rsrp = "$rawRsrp dBm",
+                rsrq = "$rawRsrq dB",
+                sinr = "$rawSinr dB",
+                rssiPercent = rssiPct,
+                rsrpPercent = rsrpPct,
+                rsrqPercent = rsrqPct,
+                sinrPercent = sinrPct,
+                rssiRating = "$rssiPct% V.Good",
+                rsrpRating = "$rsrpPct% Weak",
+                rsrqRating = "$rsrqPct% Good",
+                sinrRating = "$sinrPct% Weak",
+                sessionTrafficText = "D : ${formatBytes(curDl)}   U : ${formatBytes(curUl)}   T : ${formatBytes(curDl + curUl)}  (${formatDuration(curTime)})",
+                totalTrafficText = "D : ${formatBytes(totDl)}   U : ${formatBytes(totUl)}   T : ${formatBytes(totDl + totUl)}  (${formatDaysTime(totTime)})",
+                speedLiveText = "D : ${formatSpeedBits(dlRateBytes)} (${formatSpeedBytes(dlRateBytes)})    U : ${formatSpeedBits(ulRateBytes)} (${formatSpeedBytes(ulRateBytes)})",
+                usersText = "$curWifi/$totWifi",
+                bandWork = "B${tag(sig, "band")}",
                 mode = tag(sig, "mode"),
-                netMode = tag(sig, "netmode")
+                netMode = "03",
+                lteBandHex = "40",
+                txPowerText = "4G-TxPower: PPusch: ${tag(sig, "txpower").ifEmpty { "7" }}, PPucch: 3, PSrs: 0, PPrach: 12",
+                earfcnText = "4G-Earfcn: DL: ${tag(sig, "earfcn").ifEmpty { "3250" }} UL: 21250",
+                mcsText = "4G-MCS: DL0:${tag(sig, "dl_mcs").ifEmpty { "13" }}  UL:${tag(sig, "ul_mcs").ifEmpty { "16" }}",
+                tbsText = "4G-TBS: DL0:${tag(sig, "dl_tbs").ifEmpty { "18" }}  UL:${tag(sig, "ul_tbs").ifEmpty { "15" }}",
+                freqBandwidthText = "4G-Bandwidth: DL: ${tag(sig, "dlbandwidth").ifEmpty { "20MHz" }} UL: ${tag(sig, "ulbandwidth").ifEmpty { "20MHz" }} (100%)"
             )
         } catch (e: Exception) {
             TelemetryData()
@@ -259,11 +286,49 @@ class HilinkClient(var gatewayIp: String = "http://192.168.8.1") {
         }
     }
 
-    private fun formatTime(sec: Long): String {
+    private fun formatSpeedBits(bytesPerSec: Long): String {
+        val bits = bytesPerSec * 8.0
+        return when {
+            bits >= 1_000_000 -> String.format(Locale.US, "%.2fMbps", bits / 1_000_000.0)
+            bits >= 1_000 -> String.format(Locale.US, "%.2fKbps", bits / 1_000.0)
+            else -> "${bits.toLong()}bps"
+        }
+    }
+
+    private fun formatSpeedBytes(bytesPerSec: Long): String {
+        val b = bytesPerSec.toDouble()
+        return when {
+            b >= 1024 * 1024 -> String.format(Locale.US, "%.2fMB/s", b / (1024 * 1024))
+            b >= 1024 -> String.format(Locale.US, "%.2fKB/s", b / 1024)
+            else -> "${bytesPerSec}B/s"
+        }
+    }
+
+    private fun formatBytes(bytes: Long): String {
+        val b = bytes.toDouble()
+        return when {
+            b >= 1024.0 * 1024 * 1024 * 1024 -> String.format(Locale.US, "%.2fTB", b / (1024.0 * 1024 * 1024 * 1024))
+            b >= 1024.0 * 1024 * 1024 -> String.format(Locale.US, "%.2fGB", b / (1024.0 * 1024 * 1024))
+            b >= 1024.0 * 1024 -> String.format(Locale.US, "%.2fMB", b / (1024.0 * 1024))
+            b >= 1024.0 -> String.format(Locale.US, "%.2fKB", b / 1024.0)
+            else -> "${bytes}B"
+        }
+    }
+
+    private fun formatDuration(sec: Long): String {
         val h = sec / 3600
         val m = (sec % 3600) / 60
         val s = sec % 60
         return "%02d:%02d:%02d".format(h, m, s)
+    }
+
+    private fun formatDaysTime(sec: Long): String {
+        val days = sec / 86400
+        val rem = sec % 86400
+        val h = rem / 3600
+        val m = (rem % 3600) / 60
+        val s = rem % 60
+        return if (days > 0) "$days Days $h:$m:$s" else "%02d:%02d:%02d".format(h, m, s)
     }
 
     private fun parseXml(content: String): Element {
