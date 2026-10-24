@@ -84,8 +84,13 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         prefs = getSharedPreferences("hm_settings", Context.MODE_PRIVATE)
-        val savedIp = prefs.getString("router_ip", "http://192.168.8.1/") ?: "http://192.168.8.1/"
-        hilink = HilinkClient(savedIp)
+        
+        // Sanitize any previously stored trailing slash
+        val rawIp = prefs.getString("router_ip", "http://192.168.8.1") ?: "http://192.168.8.1"
+        val cleanIp = rawIp.trim().trimEnd('/')
+        prefs.edit().putString("router_ip", cleanIp).apply()
+
+        hilink = HilinkClient(cleanIp)
 
         initViews()
         bindEvents()
@@ -163,7 +168,7 @@ class MainActivity : AppCompatActivity() {
         opt3G = findViewById(R.id.opt3G)
         opt2G = findViewById(R.id.opt2G)
 
-        tvHeaderIp.text = hilink.gatewayIp
+        tvHeaderIp.text = "${hilink.gatewayIp}/"
     }
 
     private fun bindEvents() {
@@ -257,11 +262,19 @@ class MainActivity : AppCompatActivity() {
             .setView(et)
             .setPositiveButton("SAVE") { _, _ ->
                 var ip = et.text.toString().trim()
-                if (!ip.startsWith("http")) ip = "http://$ip"
-                if (!ip.endsWith("/")) ip = "$ip/"
+                if (!ip.startsWith("http://") && !ip.startsWith("https://")) ip = "http://$ip"
+                ip = ip.trimEnd('/')
+                
                 hilink.gatewayIp = ip
                 prefs.edit().putString("router_ip", ip).apply()
-                tvHeaderIp.text = ip
+                tvHeaderIp.text = "$ip/"
+                
+                lifecycleScope.launch {
+                    hilink.fetchSessionInfo()
+                    val u = prefs.getString("user", "admin") ?: "admin"
+                    val p = prefs.getString("pass", "dns12345") ?: "dns12345"
+                    hilink.login(u, p)
+                }
                 Toast.makeText(this, "IP Updated", Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton("CANCEL", null)
