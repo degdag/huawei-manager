@@ -98,7 +98,7 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             hilink.fetchSessionInfo()
             val u = prefs.getString("user", "admin") ?: "admin"
-            val p = prefs.getString("pass", "dns12345") ?: "dns12345"
+            val p = prefs.getString("pass", "admin") ?: "admin"
             hilink.login(u, p)
             startLoop()
         }
@@ -230,7 +230,7 @@ class MainActivity : AppCompatActivity() {
         val etPass = EditText(this).apply {
             hint = "Password"
             inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
-            setText(prefs.getString("pass", "dns12345"))
+            setText(prefs.getString("pass", "admin"))
         }
         layout.addView(etUser)
         layout.addView(etPass)
@@ -272,7 +272,7 @@ class MainActivity : AppCompatActivity() {
                 lifecycleScope.launch {
                     hilink.fetchSessionInfo()
                     val u = prefs.getString("user", "admin") ?: "admin"
-                    val p = prefs.getString("pass", "dns12345") ?: "dns12345"
+                    val p = prefs.getString("pass", "admin") ?: "admin"
                     hilink.login(u, p)
                 }
                 Toast.makeText(this, "IP Updated", Toast.LENGTH_SHORT).show()
