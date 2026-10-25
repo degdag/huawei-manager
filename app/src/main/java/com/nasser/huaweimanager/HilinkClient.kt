@@ -75,13 +75,9 @@ class HilinkClient(var gatewayIp: String = "http://192.168.8.1") {
         try {
             val req = Request.Builder().url("$gatewayIp/api/webserver/SesTokInfo").build()
             client.newCall(req).execute().use { res ->
-                if (!res.isSuccessful) return@withContext false
                 val body = res.body?.string() ?: return@withContext false
                 val doc = parseXml(body)
-                val token = doc.getElementsByTagName("TokInfo")
-                    .item(0)?.textContent?.trim()
-                if (token.isNullOrEmpty()) return@withContext false
-                sessionToken = token
+                sessionToken = doc.getElementsByTagName("TokInfo").item(0)?.textContent
                 val sesInfo = doc.getElementsByTagName("SesInfo").item(0)?.textContent
                 if (!sesInfo.isNullOrEmpty() && sesInfo.contains("=")) {
                     val parts = sesInfo.split("=")
@@ -98,10 +94,8 @@ class HilinkClient(var gatewayIp: String = "http://192.168.8.1") {
 
     suspend fun login(user: String, pass: String): Pair<Boolean, String> = withContext(Dispatchers.IO) {
         try {
-            if (!fetchSessionInfo()) {
-                return@withContext Pair(false, "Could not obtain router session token")
-            }
-            val token = sessionToken ?: return@withContext Pair(false, "Missing router session token")
+            fetchSessionInfo()
+            val token = sessionToken ?: ""
 
             fun sha256(input: String): String {
                 val md = MessageDigest.getInstance("SHA-256")
@@ -452,12 +446,6 @@ class HilinkClient(var gatewayIp: String = "http://192.168.8.1") {
 
     private fun parseXml(content: String): Element {
         val factory = DocumentBuilderFactory.newInstance()
-        factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
-        factory.setFeature("http://xml.org/sax/features/external-general-entities", false)
-        factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false)
-        factory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
-        factory.isXIncludeAware = false
-        factory.isExpandEntityReferences = false
         val builder = factory.newDocumentBuilder()
         val doc = builder.parse(ByteArrayInputStream(content.toByteArray(Charsets.UTF_8)))
         return doc.documentElement
