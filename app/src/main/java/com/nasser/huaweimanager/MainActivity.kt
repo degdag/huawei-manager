@@ -352,6 +352,9 @@ class MainActivity : AppCompatActivity() {
             v.findViewById<TextView>(R.id.tvStatMonthlyUptime).text = s[2]
             v.findViewById<TextView>(R.id.tvStatMonthlyData).text = s[3]
         }
+        v.findViewById<Button>(R.id.btnOptClearStats).setOnClickListener {
+            dlg.dismiss(); confirm("Clear traffic statistics?") { hilink.clearTraffic() }
+        }
         dlg.show()
     }
 
@@ -418,7 +421,28 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private var controlsSynced = false
+
+    private fun syncControls(t: TelemetryData) {
+        val pills = listOf(optAuto to "00", opt4G to "03", opt3G to "02", opt2G to "01")
+        val sel = pills.firstOrNull { it.second == t.netMode } ?: return
+        pills.forEach { (v, _) ->
+            v.setBackgroundResource(R.drawable.pill_dark)
+            v.setTextColor(Color.parseColor("#AAAAAA"))
+        }
+        sel.first.setBackgroundResource(R.drawable.pill_green)
+        sel.first.setTextColor(Color.WHITE)
+        selectedMode = sel.second
+
+        val mask = t.lteBandHex.toLongOrNull(16) ?: return
+        if (mask == 0x7FFFFFFFFFFFFFFFL) return   // "all bands" = no lock, leave boxes empty
+        mapOf(1 to cbFdd1, 3 to cbFdd3, 7 to cbFdd7, 8 to cbFdd8, 20 to cbFdd20,
+              38 to cbTdd38, 40 to cbTdd40, 41 to cbTdd41, 42 to cbTdd42)
+            .forEach { (b, cb) -> cb.isChecked = ((mask shr (b - 1)) and 1L) == 1L }
+    }
+
     private fun updateUi(t: TelemetryData) {
+        if (!controlsSynced && t.status == "Connected") { controlsSynced = true; syncControls(t) }
         tvStatus.text = t.status
         tvModel.text = t.model
         tvService.text = t.service

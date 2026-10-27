@@ -7,7 +7,7 @@
     <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
 
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:icon="@android:drawable/sym_def_app_icon"
         android:label="Huawei Manager"
         android:supportsRtl="true"

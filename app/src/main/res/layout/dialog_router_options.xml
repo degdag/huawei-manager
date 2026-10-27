@@ -104,4 +104,16 @@
         <TextView android:id="@+id/tvStatMonthlyUptime" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Monthly Uptime : 0 Day 0:00:00" android:textAlignment="center" android:textColor="@color/text_green" android:textSize="11sp" />
         <TextView android:id="@+id/tvStatMonthlyData" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Monthly Total Data : 0GB" android:textAlignment="center" android:textColor="@color/text_green" android:textSize="11sp" />
     </LinearLayout>
+
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/btnOptClearStats"
+        app:backgroundTint="@null"
+        android:layout_width="match_parent"
+        android:layout_height="36dp"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/pill_red"
+        android:text="Clear Statistics"
+        android:textAllCaps="false"
+        android:textColor="#FFFFFF"
+        android:textSize="12sp" />
 </LinearLayout>
