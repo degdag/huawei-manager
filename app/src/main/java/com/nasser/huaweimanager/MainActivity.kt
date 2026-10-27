@@ -12,7 +12,11 @@ import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 
 class MainActivity : AppCompatActivity() {
 
@@ -96,6 +100,7 @@ class MainActivity : AppCompatActivity() {
         bindEvents()
 
         lifecycleScope.launch {
+            NetBinder.bindToWifi(applicationContext)
             hilink.fetchSessionInfo()
             val u = prefs.getString("user", "admin") ?: "admin"
             val p = prefs.getString("pass", "admin") ?: "admin"
@@ -289,24 +294,31 @@ class MainActivity : AppCompatActivity() {
             dlg.dismiss()
         }
         v.findViewById<Button>(R.id.btnOptShutdown).setOnClickListener {
-            lifecycleScope.launch { hilink.controlDevice(2) }
+            lifecycleScope.launch { hilink.controlDevice(4) }
             dlg.dismiss()
         }
         dlg.show()
     }
 
     private fun startLoop() {
-        isPolling = true
-        handler.post(object : Runnable {
-            override fun run() {
-                if (!isPolling) return
-                lifecycleScope.launch {
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                var fails = 0
+                while (isActive) {
                     val t = hilink.getTelemetry()
                     updateUi(t)
+                    if (t.status == "Connected") {
+                        fails = 0
+                    } else if (++fails % 3 == 0) {
+                        NetBinder.bindToWifi(applicationContext)
+                        val u = prefs.getString("user", "admin") ?: "admin"
+                        val p = prefs.getString("pass", "dns12345") ?: "dns12345"
+                        hilink.login(u, p)
+                    }
+                    delay(1500)
                 }
-                handler.postDelayed(this, 1500)
             }
-        })
+        }
     }
 
     private fun updateUi(t: TelemetryData) {

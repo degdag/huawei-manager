@@ -201,6 +201,7 @@ class HilinkClient(var gatewayIp: String = "http://192.168.8.1") {
             }
 
             val sig = getXml("/api/device/signal")
+            if (sig == null || sig.tagName == "error") return@withContext TelemetryData()
             val statusDoc = getXml("/api/monitoring/status")
             val traffic = getXml("/api/monitoring/traffic-statistics")
             val devInfo = getXml("/api/device/information")
