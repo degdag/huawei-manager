@@ -207,8 +207,12 @@ class MainActivity : AppCompatActivity() {
             }
         }
         findViewById<TextView>(R.id.btnInfo).setOnClickListener {
-            AlertDialog.Builder(this).setTitle("Huawei Manager").setMessage("Version 1.0")
-                .setPositiveButton("OK", null).show()
+            lifecycleScope.launch {
+                val lines = hilink.deviceInfoLines()
+                AlertDialog.Builder(this@MainActivity).setTitle("Device Information")
+                    .setMessage(if (lines.isEmpty()) "No data (not logged in?)" else lines.joinToString("\n"))
+                    .setPositiveButton("OK", null).show()
+            }
         }
         findViewById<Button>(R.id.btnLoginDialog).setOnClickListener { showLoginDialog() }
         findViewById<Button>(R.id.btnRouterOptions).setOnClickListener { showRouterOptionsDialog() }
@@ -400,13 +404,40 @@ class MainActivity : AppCompatActivity() {
             }.show()
     }
 
+    private fun barsText(active: Int, label: String, color: Int): CharSequence {
+        val n = active.coerceIn(0, 5)
+        val s = android.text.SpannableStringBuilder("▂▃▄▆█\n$label")
+        val f = android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+        if (n > 0) s.setSpan(android.text.style.ForegroundColorSpan(color), 0, n, f)
+        if (n < 5) s.setSpan(android.text.style.ForegroundColorSpan(0xFF3A4556.toInt()), n, 5, f)
+        s.setSpan(android.text.style.ForegroundColorSpan(color), 6, s.length, f)
+        return s
+    }
+
+    private fun renderStatus(s: StatusInfo?) {
+        if (s == null) return
+        val green = 0xFF2ECC71.toInt()
+        val red = 0xFFE74C3C.toInt()
+        val connected = s.connection == "Connected"
+        tvStatus.text = s.connection
+        tvStatus.setBackgroundColor(when (s.connection) {
+            "Connected" -> 0xFF27AE60.toInt()
+            "Connecting" -> 0xFFC97F00.toInt()
+            else -> 0xFFAA0000.toInt()
+        })
+        findViewById<TextView>(R.id.tvSig4G).text = barsText(s.icon, s.netType, if (connected) green else red)
+        findViewById<TextView>(R.id.tvSig5G).text = barsText(if (s.nr) s.iconNr else 0, "5G", if (s.nr) green else red)
+    }
+
     private fun startLoop() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 var fails = 0
                 while (isActive) {
                     val t = hilink.getTelemetry()
+                    val si = hilink.statusInfo()
                     updateUi(t)
+                    renderStatus(si)
                     if (t.status == "Connected") {
                         fails = 0
                     } else if (++fails % 3 == 0) {
@@ -451,8 +482,8 @@ class MainActivity : AppCompatActivity() {
         tvTac.text = t.tac
         tvEnbid.text = t.enbidCell
 
-        tvDiagOperator.text = "Morocco ${t.plmn}"
-        tvCountryFlag.text = if (t.plmn.startsWith("604")) "🇲🇦" else "🌐"
+        tvDiagOperator.text = "${Countries.lookup(t.plmn)?.first ?: "Unknown"} ${t.plmn}"
+        tvCountryFlag.text = Countries.lookup(t.plmn)?.second ?: "🌐"
 
         tvDiagnostic1.text = "BandLTEWork : ${t.bandWork}  Mode : ${t.mode}"
         tvDiagnostic2.text = "SetBand : ${t.bandWork}\nSetName : ${t.bandFreq}"

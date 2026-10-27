@@ -139,3 +139,52 @@ suspend fun HilinkClient.routerStats(): List<String> {
     return listOf("Total Router Uptime : ${fmtDur(totSec)}", "Total Size Of Data : ${fmtBytes(totData)}",
         "Monthly Uptime : ${fmtDur(monSec)}", "Monthly Total Data : ${fmtBytes(monData)}")
 }
+
+data class StatusInfo(val connection: String, val netType: String, val icon: Int, val nr: Boolean, val iconNr: Int)
+
+fun netTypeName(v: String): String {
+    val n = v.toIntOrNull() ?: return if (v.isEmpty()) "—" else v
+    return when (n) {
+        0 -> "No service"
+        1 -> "GSM (2G)"; 2 -> "GPRS (2G)"; 3 -> "EDGE (2G)"
+        41 -> "UMTS (3G)"; 42 -> "HSDPA (3G)"; 43 -> "HSUPA (3G)"; 44 -> "HSPA (3G)"
+        45 -> "HSPA+ (3.5G)"; 46 -> "DC-HSPA+ (3.5G)"
+        61 -> "TD-SCDMA (3G)"; 62 -> "TD-HSDPA (3G)"; 63 -> "TD-HSUPA (3G)"; 64 -> "TD-HSPA (3G)"; 65 -> "TD-HSPA+ (3.5G)"
+        101 -> "LTE (4G)"; 1011 -> "LTE CA (4G+)"; 111 -> "NR (5G)"
+        else -> "Type $n"
+    }
+}
+
+fun connectionName(code: String): String = when (code) {
+    "900" -> "Connecting"; "901" -> "Connected"; "902" -> "Not Connected"; "903" -> "Disconnect"
+    "904" -> "Connection Failed"; "905" -> "No Service"; "906" -> "Connection Error"
+    "33", "0" -> "Disconnected"
+    else -> code.ifEmpty { "—" }
+}
+
+suspend fun HilinkClient.statusInfo(): StatusInfo? {
+    val s = getDoc("/api/monitoring/status") ?: return null
+    val type = s.txt("CurrentNetworkTypeEx").ifEmpty { if (s.txt("CurrentNetworkType") == "19") "101" else "" }
+    return StatusInfo(
+        connectionName(s.txt("ConnectionStatus")), netTypeName(type),
+        s.txt("SignalIcon").toIntOrNull() ?: 0,
+        s.txt("EndcStatus") == "1" || type == "111",
+        s.txt("SignalIconNr").toIntOrNull() ?: 0
+    )
+}
+
+suspend fun HilinkClient.deviceInfoLines(): List<String> {
+    val d = getDoc("/api/device/information")
+    val s = getDoc("/api/monitoring/status")
+    if (d == null && s == null) return emptyList()
+    val out = ArrayList<String>()
+    fun add(label: String, v: String) { if (v.isNotEmpty()) out.add("$label: $v") }
+    add("Device", d.txt("DeviceName")); add("Hardware", d.txt("HardwareVersion"))
+    add("Firmware", d.txt("SoftwareVersion")); add("WebUI", d.txt("WebUIVersion"))
+    add("IMEI", d.txt("Imei")); add("IMSI", d.txt("Imsi")); add("ICCID", d.txt("Iccid")); add("Phone", d.txt("Msisdn"))
+    add("WAN IP", s.txt("WanIPAddress").ifEmpty { d.txt("WanIPAddress") })
+    add("DNS 1", s.txt("PrimaryDns")); add("DNS 2", s.txt("SecondaryDns"))
+    add("MAC 1", d.txt("MacAddress1")); add("MAC 2", d.txt("MacAddress2"))
+    val bat = s.txt("BatteryPercent"); if (bat.isNotEmpty()) add("Battery", "$bat%")
+    return out
+}
