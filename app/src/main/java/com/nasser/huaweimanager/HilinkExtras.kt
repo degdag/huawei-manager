@@ -15,7 +15,8 @@ data class Rating(val pct: Int, val label: String, val color: Int)
 data class HostInfo(val name: String, val ip: String, val mac: String, val seconds: Long)
 
 /** Same thresholds/colors as the original main.js (colorrssi/colorrsrp/colorrsrq/colorsinr). */
-fun rate(cur: Int, l0: Int, l1: Int, l2: Int, l3: Int, l4: Int, l5: Int): Rating {
+fun rate(cur: Int?, l0: Int, l1: Int, l2: Int, l3: Int, l4: Int, l5: Int): Rating {
+    if (cur == null) return Rating(0, "Unavailable", 0)
     val c = cur.coerceIn(l0, l5)
     val pct = minOf((c - l0) * 100 / (l5 - l0) + 1, 100)
     val (label, color) = when {
