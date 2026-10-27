@@ -1,6 +1,8 @@
 package com.nasser.huaweimanager
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.content.SharedPreferences
 import android.graphics.Color
 import android.os.Bundle
@@ -178,6 +180,36 @@ class MainActivity : AppCompatActivity() {
 
     private fun bindEvents() {
         tvHeaderIp.setOnClickListener { showRouterIpDialog() }
+        findViewById<Button>(R.id.btnHomePage).setOnClickListener {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(hilink.gatewayIp + "/")))
+        }
+        btnUsers.setOnClickListener {
+            lifecycleScope.launch {
+                val hs = hilink.hosts()
+                val text = if (hs.isEmpty()) "No devices" else hs.joinToString("\n\n") {
+                    "${it.name}\nIP: ${it.ip}\nMAC: ${it.mac}\nTime: ${fmtDur(it.seconds)}"
+                }
+                AlertDialog.Builder(this@MainActivity).setTitle("Networked Devices")
+                    .setMessage(text).setPositiveButton("OK", null).show()
+            }
+        }
+        findViewById<TextView>(R.id.btnAntenna).setOnClickListener { v ->
+            lifecycleScope.launch {
+                (v as TextView).text = hilink.antennaLabel()
+                val items = arrayOf("Auto", "Internal", "External")
+                AlertDialog.Builder(this@MainActivity).setTitle("Antenna: ${v.text}")
+                    .setItems(items) { _, i ->
+                        lifecycleScope.launch {
+                            val ok = hilink.setAntenna(items[i])
+                            Toast.makeText(this@MainActivity, if (ok) "Antenna switched" else "Antenna not switched", Toast.LENGTH_SHORT).show()
+                        }
+                    }.show()
+            }
+        }
+        findViewById<TextView>(R.id.btnInfo).setOnClickListener {
+            AlertDialog.Builder(this).setTitle("Huawei Manager").setMessage("Version 1.0")
+                .setPositiveButton("OK", null).show()
+        }
         findViewById<Button>(R.id.btnLoginDialog).setOnClickListener { showLoginDialog() }
         findViewById<Button>(R.id.btnRouterOptions).setOnClickListener { showRouterOptionsDialog() }
         findViewById<TextView>(R.id.btnSettingsGear).setOnClickListener { showRouterIpDialog() }
@@ -217,7 +249,7 @@ class MainActivity : AppCompatActivity() {
             if (cbTdd42.isChecked) list.add(42)
 
             lifecycleScope.launch {
-                val (ok, msg) = hilink.lockBands(list)
+                val (ok, msg) = if (cb3G_B1.isChecked || cb3G_B8.isChecked) hilink.lock3G(cb3G_B1.isChecked, cb3G_B8.isChecked) else hilink.lockBands(list)
                 Toast.makeText(this@MainActivity, msg, Toast.LENGTH_LONG).show()
             }
         }
@@ -286,16 +318,37 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    private fun confirm(msg: String, action: suspend () -> Boolean) {
+        AlertDialog.Builder(this).setMessage(msg)
+            .setPositiveButton("YES") { _, _ ->
+                lifecycleScope.launch {
+                    val ok = action()
+                    Toast.makeText(this@MainActivity, if (ok) "Done" else "Failed", Toast.LENGTH_SHORT).show()
+                }
+            }.setNegativeButton("NO", null).show()
+    }
+
     private fun showRouterOptionsDialog() {
         val v = LayoutInflater.from(this).inflate(R.layout.dialog_router_options, null)
         val dlg = AlertDialog.Builder(this).setView(v).create()
         v.findViewById<Button>(R.id.btnOptRestart).setOnClickListener {
-            lifecycleScope.launch { hilink.controlDevice(1) }
-            dlg.dismiss()
+            dlg.dismiss(); confirm("Restart the router?") { hilink.restartRouter() }
         }
         v.findViewById<Button>(R.id.btnOptShutdown).setOnClickListener {
-            lifecycleScope.launch { hilink.controlDevice(4) }
-            dlg.dismiss()
+            dlg.dismiss(); confirm("Shut down the router?") { hilink.powerOffRouter() }
+        }
+        v.findViewById<Button>(R.id.btnOptRefreshIp).setOnClickListener {
+            lifecycleScope.launch {
+                val ok = hilink.refreshIp()
+                Toast.makeText(this@MainActivity, if (ok) "IP refreshed" else "Refresh failed", Toast.LENGTH_SHORT).show()
+            }
+        }
+        lifecycleScope.launch {
+            val s = hilink.routerStats()
+            v.findViewById<TextView>(R.id.tvStatUptime).text = s[0]
+            v.findViewById<TextView>(R.id.tvStatTotalData).text = s[1]
+            v.findViewById<TextView>(R.id.tvStatMonthlyUptime).text = s[2]
+            v.findViewById<TextView>(R.id.tvStatMonthlyData).text = s[3]
         }
         dlg.show()
     }
@@ -348,18 +401,22 @@ class MainActivity : AppCompatActivity() {
         tvRssiVal.text = t.rssi
         tvRssiEval.text = t.rssiRating
         setBarWidth(barRssi, t.rssiPercent)
+        paint(barRssi, tvRssiEval, t.rssiColor)
 
         tvRsrpVal.text = t.rsrp
         tvRsrpEval.text = t.rsrpRating
         setBarWidth(barRsrp, t.rsrpPercent)
+        paint(barRsrp, tvRsrpEval, t.rsrpColor)
 
         tvRsrqVal.text = t.rsrq
         tvRsrqEval.text = t.rsrqRating
         setBarWidth(barRsrq, t.rsrqPercent)
+        paint(barRsrq, tvRsrqEval, t.rsrqColor)
 
         tvSinrVal.text = t.sinr
         tvSinrEval.text = t.sinrRating
         setBarWidth(barSinr, t.sinrPercent)
+        paint(barSinr, tvSinrEval, t.sinrColor)
 
         tvTxPower.text = t.txPowerText
         tvEarfcn.text = t.earfcnText
@@ -367,6 +424,12 @@ class MainActivity : AppCompatActivity() {
         tvTbs.text = t.tbsText
         tvFreqBandwidth.text = t.freqBandwidthText
         btnUsers.text = t.usersText
+    }
+
+    private fun paint(bar: View, pill: TextView, color: Int) {
+        if (color == 0) return
+        bar.setBackgroundColor(color)
+        pill.background?.mutate()?.setTint(color)
     }
 
     private fun setBarWidth(view: View, percent: Int) {

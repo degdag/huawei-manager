@@ -58,7 +58,7 @@ class HilinkClient(var gatewayIp: String = "http://192.168.8.1") {
 
     private val cookieStore = mutableMapOf<String, Cookie>()
 
-    private val client = OkHttpClient.Builder().cookieJar(object : CookieJar {
+    internal val client = OkHttpClient.Builder().cookieJar(object : CookieJar {
         override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
             for (c in cookies) cookieStore[c.name] = c
         }
@@ -94,35 +94,44 @@ class HilinkClient(var gatewayIp: String = "http://192.168.8.1") {
 
     suspend fun login(user: String, pass: String): Pair<Boolean, String> = withContext(Dispatchers.IO) {
         try {
+            fun sha256(input: String): String =
+                MessageDigest.getInstance("SHA-256").digest(input.toByteArray())
+                    .joinToString("") { "%02x".format(it) }
+            fun b64(s: String) = Base64.encodeToString(s.toByteArray(), Base64.NO_WRAP)
+
+            var state = ""
+            var passType = ""
+            client.newCall(Request.Builder().url("$gatewayIp/api/user/state-login").build()).execute().use { r ->
+                r.body?.string()?.let { s ->
+                    val d = parseXml(s)
+                    state = d.getElementsByTagName("State").item(0)?.textContent ?: ""
+                    passType = d.getElementsByTagName("password_type").item(0)?.textContent ?: ""
+                }
+            }
+            if (state == "0") {
+                fetchSessionInfo()
+                return@withContext Pair(true, "Already logged in")
+            }
             fetchSessionInfo()
             val token = sessionToken ?: ""
-
-            fun sha256(input: String): String {
-                val md = MessageDigest.getInstance("SHA-256")
-                return md.digest(input.toByteArray()).fold("") { str, it -> str + "%02x".format(it) }
-            }
-
-            val passHash = sha256(pass)
-            val passB64 = Base64.encodeToString(passHash.toByteArray(), Base64.NO_WRAP)
-            val finalHash = sha256(user + passB64 + token)
-            val authPassword = Base64.encodeToString(finalHash.toByteArray(), Base64.NO_WRAP)
-
-            val xml = """<?xml version="1.0" encoding="UTF-8"?><request><Username>$user</Username><Password>$authPassword</Password><password_type>4</password_type></request>"""
-            val body = xml.toRequestBody("application/xml".toMediaTypeOrNull())
-
+            val pwd = if (passType == "4") b64(sha256(user + b64(sha256(pass)) + token)) else b64(pass)
+            val typeTag = if (passType == "4") "<password_type>4</password_type>" else ""
+            val xml = """<?xml version="1.0" encoding="UTF-8"?><request><Username>$user</Username><Password>$pwd</Password>$typeTag</request>"""
             val req = Request.Builder()
                 .url("$gatewayIp/api/user/login")
                 .header("__RequestVerificationToken", token)
-                .post(body)
+                .post(xml.toRequestBody("application/xml".toMediaTypeOrNull()))
                 .build()
-
             client.newCall(req).execute().use { res ->
                 val resp = res.body?.string() ?: ""
                 res.header("__RequestVerificationToken")?.let { sessionToken = it }
-                if (resp.contains("<response>OK</response>")) {
-                    Pair(true, "Login Success")
-                } else {
-                    Pair(false, "Login Failed")
+                when {
+                    resp.contains("<response>OK</response>") -> { fetchSessionInfo(); Pair(true, "Login Success") }
+                    resp.contains("108006") -> Pair(false, "Wrong username or password")
+                    resp.contains("108007") -> Pair(false, "Too many attempts, try again in 2 minutes")
+                    resp.contains("108003") -> Pair(false, "Another user is logged in, wait 2 minutes or restart")
+                    resp.contains("125003") -> Pair(false, "Token error, retry")
+                    else -> Pair(false, "Login Failed")
                 }
             }
         } catch (e: Exception) {
@@ -238,10 +247,14 @@ class HilinkClient(var gatewayIp: String = "http://192.168.8.1") {
             val rawSinr = signalMetric("sinr", "dB")
 
             // Thresholds aligned with main.js: colorrssi, colorrsrp, colorrsrq, colorsinr
-            val rssiPct = rawRssi?.let { ((it - (-110)) * 100 / ((-51) - (-110))).coerceIn(5, 100) } ?: 0
-            val rsrpPct = rawRsrp?.let { ((it - (-124)) * 100 / ((-51) - (-124))).coerceIn(5, 100) } ?: 0
-            val rsrqPct = rawRsrq?.let { ((it - (-20)) * 100 / (0 - (-20))).coerceIn(5, 100) } ?: 0
-            val sinrPct = rawSinr?.let { ((it - 3) * 100 / (30 - 3)).coerceIn(5, 100) } ?: 0
+            val rssiR = rate(rawRssi, -124, -110, -95, -85, -75, -51)
+            val rssiPct = rssiR.pct
+            val rsrpR = rate(rawRsrp, -124, -110, -95, -85, -75, -51)
+            val rsrpPct = rsrpR.pct
+            val rsrqR = rate(rawRsrq, -30, -20, -15, -10, -6, 0)
+            val rsrqPct = rsrqR.pct
+            val sinrR = rate(rawSinr, -15, 3, 10, 15, 22, 30)
+            val sinrPct = sinrR.pct
 
             val dlRateBytes = tag(traffic, "CurrentDownloadRate").toLongOrNull() ?: 0L
             val ulRateBytes = tag(traffic, "CurrentUploadRate").toLongOrNull() ?: 0L
@@ -354,9 +367,13 @@ class HilinkClient(var gatewayIp: String = "http://192.168.8.1") {
                 rsrq = rawRsrq?.let { "$it dB" } ?: "—",
                 sinr = rawSinr?.let { "$it dB" } ?: "—",
                 rssiPercent = rssiPct,
+                rssiColor = rssiR.color,
                 rsrpPercent = rsrpPct,
+                rsrpColor = rsrpR.color,
                 rsrqPercent = rsrqPct,
+                rsrqColor = rsrqR.color,
                 sinrPercent = sinrPct,
+                sinrColor = sinrR.color,
                 rssiRating = if (rawRssi == null) "Unavailable" else "$rssiPct%",
                 rsrpRating = if (rawRsrp == null) "Unavailable" else "$rsrpPct%",
                 rsrqRating = if (rawRsrq == null) "Unavailable" else "$rsrqPct%",
