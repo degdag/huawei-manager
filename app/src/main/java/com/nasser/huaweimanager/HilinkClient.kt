@@ -75,6 +75,8 @@ class HilinkClient(var gatewayIp: String = "http://192.168.8.1") {
 
     var sessionToken: String? = null
 
+    fun cookieStrings() = ArrayList(cookieStore.values.map { "${it.name}=${it.value}; path=/" })
+
     suspend fun fetchSessionInfo(): Boolean = withContext(Dispatchers.IO) {
         try {
             val req = Request.Builder().url("$gatewayIp/api/webserver/SesTokInfo").build()

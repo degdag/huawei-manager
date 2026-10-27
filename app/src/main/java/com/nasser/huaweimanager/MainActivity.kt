@@ -236,6 +236,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        findViewById<Button>(R.id.btnHomePage).setOnClickListener { openRouterPage("Home", "html/home.html") }
+        findViewById<TextView>(R.id.btnMenu).setOnClickListener { showRouterMenu() }
         findViewById<Button>(R.id.btnApplyBands).setOnClickListener {
             val list = mutableListOf<Int>()
             if (cbFdd1.isChecked) list.add(1)
@@ -351,6 +353,48 @@ class MainActivity : AppCompatActivity() {
             v.findViewById<TextView>(R.id.tvStatMonthlyData).text = s[3]
         }
         dlg.show()
+    }
+
+    private val menuPages = listOf(
+        "Mobile Connection" to "html/mobileconnection.html",
+        "Mobile Network Settings" to "html/mobilenetworksettings.html",
+        "Profiles" to "html/profilesmgr.html",
+        "Statistics" to "html/statistic.html",
+        "SMS Inbox" to "html/smsinbox.html?smsinbox",
+        "SMS Sent" to "html/smsinbox.html?smssent",
+        "USSD" to "html/ussd.html",
+        "Wi-Fi Basic Settings" to "html/wlanbasicsettings.html",
+        "Wi-Fi Advanced" to "html/wlanadvanced.html",
+        "Wi-Fi MAC Filter" to "html/wlanmacfilter.html",
+        "DHCP" to "html/dhcp.html",
+        "Virtual Server" to "html/virtualserver.html",
+        "Special Application" to "html/specialapplication.html",
+        "DMZ" to "html/dmzsettings.html",
+        "UPnP" to "html/upnp.html",
+        "NAT" to "html/nat.html",
+        "MAC Filter" to "html/macfilter.html",
+        "IP Filter" to "html/lanipfilter.html",
+        "URL Filter" to "html/urlfilter.html",
+        "Antenna" to "html/antenna.html",
+        "Device Information" to "html/deviceinformation.html",
+        "Device Management" to "html/devicemanagement.html",
+        "Change Password" to "html/modifypassword.html"
+    )
+
+    private fun openRouterPage(title: String, path: String) {
+        startActivity(
+            android.content.Intent(this, RouterWebActivity::class.java)
+                .putExtra("url", hilink.gatewayIp + "/" + path)
+                .putExtra("title", title)
+                .putStringArrayListExtra("cookies", hilink.cookieStrings())
+        )
+    }
+
+    private fun showRouterMenu() {
+        AlertDialog.Builder(this).setTitle("Router Menu")
+            .setItems(menuPages.map { it.first }.toTypedArray()) { _, i ->
+                openRouterPage(menuPages[i].first, menuPages[i].second)
+            }.show()
     }
 
     private fun startLoop() {
